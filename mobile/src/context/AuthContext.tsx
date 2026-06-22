@@ -1,0 +1,176 @@
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import * as SecureStore from 'expo-secure-store';
+import { api } from '../services/api';
+import { authenticateWithBiometric, getBiometricSupport } from '../services/biometric';
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface AuthContextType {
+  user: User | null;
+  token: string | null;
+  loading: boolean;
+  biometricAvailable: boolean;
+  biometricLabel: string;
+  biometricEnabled: boolean;
+  canUseBiometricLogin: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  loginWithBiometric: () => Promise<void>;
+  enableBiometric: () => Promise<void>;
+  disableBiometric: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const TOKEN_KEY = 'auth_token';
+const USER_KEY = 'auth_user';
+const BIOMETRIC_KEY = 'biometric_enabled';
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricLabel, setBiometricLabel] = useState('Biometrics');
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [hasStoredSession, setHasStoredSession] = useState(false);
+
+  useEffect(() => {
+    loadStoredAuth();
+  }, []);
+
+  const loadStoredAuth = async () => {
+    try {
+      const bio = await getBiometricSupport();
+      setBiometricAvailable(bio.available);
+      setBiometricLabel(bio.label);
+
+      const storedToken = await SecureStore.getItemAsync(TOKEN_KEY);
+      const storedUser = await SecureStore.getItemAsync(USER_KEY);
+      const bioEnabled = (await SecureStore.getItemAsync(BIOMETRIC_KEY)) === 'true';
+      setBiometricEnabled(bioEnabled);
+
+      if (storedToken && storedUser) {
+        setHasStoredSession(true);
+        if (!bioEnabled) {
+          setToken(storedToken);
+          setUser(JSON.parse(storedUser));
+          api.setToken(storedToken);
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const persistAuth = async (newToken: string, newUser: User) => {
+    await SecureStore.setItemAsync(TOKEN_KEY, newToken);
+    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(newUser));
+    api.setToken(newToken);
+    setToken(newToken);
+    setUser(newUser);
+    setHasStoredSession(true);
+  };
+
+  const restoreStoredSession = async () => {
+    const storedToken = await SecureStore.getItemAsync(TOKEN_KEY);
+    const storedUser = await SecureStore.getItemAsync(USER_KEY);
+    if (!storedToken || !storedUser) {
+      throw new Error('No saved session found. Please sign in with your password.');
+    }
+    setToken(storedToken);
+    setUser(JSON.parse(storedUser));
+    api.setToken(storedToken);
+  };
+
+  const login = async (email: string, password: string) => {
+    const data = await api.post<{ token: string; user: User }>('/auth/login', {
+      email,
+      password,
+    });
+    await persistAuth(data.token, data.user);
+  };
+
+  const register = async (name: string, email: string, password: string) => {
+    const data = await api.post<{ token: string; user: User }>('/auth/register', {
+      name,
+      email,
+      password,
+    });
+    await persistAuth(data.token, data.user);
+  };
+
+  const logout = async () => {
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    await SecureStore.deleteItemAsync(USER_KEY);
+    await SecureStore.deleteItemAsync(BIOMETRIC_KEY);
+    api.setToken(null);
+    setToken(null);
+    setUser(null);
+    setBiometricEnabled(false);
+    setHasStoredSession(false);
+  };
+
+  const loginWithBiometric = async () => {
+    const ok = await authenticateWithBiometric(`Unlock with ${biometricLabel}`);
+    if (!ok) {
+      throw new Error(`${biometricLabel} authentication cancelled`);
+    }
+    await restoreStoredSession();
+  };
+
+  const enableBiometric = async () => {
+    if (!biometricAvailable) {
+      throw new Error(`${biometricLabel} is not available on this device`);
+    }
+    const ok = await authenticateWithBiometric(`Enable ${biometricLabel} login`);
+    if (!ok) {
+      throw new Error(`${biometricLabel} authentication cancelled`);
+    }
+    await SecureStore.setItemAsync(BIOMETRIC_KEY, 'true');
+    setBiometricEnabled(true);
+  };
+
+  const disableBiometric = async () => {
+    await SecureStore.deleteItemAsync(BIOMETRIC_KEY);
+    setBiometricEnabled(false);
+  };
+
+  const canUseBiometricLogin =
+    biometricAvailable && biometricEnabled && hasStoredSession && !token;
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        loading,
+        biometricAvailable,
+        biometricLabel,
+        biometricEnabled,
+        canUseBiometricLogin,
+        login,
+        register,
+        logout,
+        loginWithBiometric,
+        enableBiometric,
+        disableBiometric,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  return context;
+}
