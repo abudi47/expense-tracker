@@ -31,6 +31,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/budgets', budgetRoutes);
 app.use('/api/accounts', accountRoutes);
+app.use('/api/settings', require('./routes/settings'));
 app.use('/api/dashboard', dashboardRoutes);
 
 app.use((err, req, res, next) => {
