@@ -97,16 +97,28 @@ export interface Account {
   icon: string;
   color: string;
   currency: string;
+  fxGroup?: 'crypto' | 'bank' | 'local';
   openingBalance?: number;
   balance: number;
+  convertedBalance?: number;
+  displayCurrency?: string;
   isArchived?: boolean;
   sortOrder?: number;
+}
+
+export interface FxSettings {
+  displayCurrency: 'ETB' | 'USD';
+  cryptoUsdToEtb: number;
+  bankUsdToEtb: number;
 }
 
 export interface AccountsSummary {
   totalsByCurrency: { currency: string; total: number }[];
   accounts: Account[];
   legacyTransactionCount: number;
+  fx: FxSettings;
+  displayCurrency: 'ETB' | 'USD';
+  totalConverted: number;
 }
 
 export interface Transaction {

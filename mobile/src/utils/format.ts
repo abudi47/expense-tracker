@@ -1,9 +1,40 @@
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format(amount);
+export function formatCurrency(amount: number, currency: string = 'USD'): string {
+  const cur = (currency || 'USD').toUpperCase();
+
+  if (cur === 'ETB') {
+    return (
+      new Intl.NumberFormat('en-ET', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(amount) + ' Br'
+    );
+  }
+
+  if (cur === 'USDT') {
+    return (
+      new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(amount) + ' USDT'
+    );
+  }
+
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: cur,
+      minimumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return (
+      new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(amount) +
+      ' ' +
+      cur
+    );
+  }
 }
 
 export function formatDate(date: string | Date): string {

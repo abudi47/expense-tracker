@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View, Text, ScrollView, Alert, Switch } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { Card, Button, SettingRow, ScreenHeader } from '../components/ui';
+import { Card, Button, SettingRow, ScreenHeader, Input } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../components/Toast';
+import { api, FxSettings } from '../services/api';
 import { palette, theme, ThemeMode } from '../theme';
 import { useThemeColors } from '../theme/useThemeColors';
 
@@ -12,7 +15,29 @@ export default function SettingsScreen() {
     useAuth();
   const { mode, setMode, isDark } = useTheme();
   const colors = useThemeColors();
+  const { showToast } = useToast();
   const [bioBusy, setBioBusy] = useState(false);
+  const [fx, setFx] = useState<FxSettings | null>(null);
+  const [cryptoRate, setCryptoRate] = useState('180');
+  const [bankRate, setBankRate] = useState('158');
+  const [fxSaving, setFxSaving] = useState(false);
+
+  const loadFx = async () => {
+    try {
+      const data = await api.get<FxSettings>('/settings/fx');
+      setFx(data);
+      setCryptoRate(String(data.cryptoUsdToEtb));
+      setBankRate(String(data.bankUsdToEtb));
+    } catch {
+      // ignore
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadFx();
+    }, [])
+  );
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -46,6 +71,28 @@ export default function SettingsScreen() {
     await setMode(next);
   };
 
+  const saveFxRates = async () => {
+    const crypto = parseFloat(cryptoRate);
+    const bank = parseFloat(bankRate);
+    if (!crypto || crypto <= 0 || !bank || bank <= 0) {
+      showToast('Enter valid rates greater than 0', 'error');
+      return;
+    }
+    setFxSaving(true);
+    try {
+      const data = await api.put<FxSettings>('/settings/fx', {
+        cryptoUsdToEtb: crypto,
+        bankUsdToEtb: bank,
+      });
+      setFx(data);
+      showToast('Conversion rates saved', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to save rates', 'error');
+    } finally {
+      setFxSaving(false);
+    }
+  };
+
   const themeLabel =
     mode === 'system' ? 'System default' : mode === 'light' ? 'Light' : 'Dark';
 
@@ -66,6 +113,38 @@ export default function SettingsScreen() {
               <Text className={`${theme.subtitle} text-sm`}>{user?.email}</Text>
             </View>
           </View>
+        </Card>
+
+        <Text className={`${theme.subtitle} text-xs font-semibold uppercase mb-2 ml-1`}>
+          Currency conversion
+        </Text>
+        <Card className="mb-4">
+          <Text className={`${theme.title} font-medium mb-1`}>USD → ETB rates</Text>
+          <Text className={`${theme.subtitle} text-xs mb-4`}>
+            Binance / Grey / Bybit / USDT use the crypto rate. Local bank & other USD use the bank
+            rate. Totals on Assets can switch between ETB and USD.
+          </Text>
+          <Input
+            label="Crypto / Grey rate (1 USD = ? Br)"
+            value={cryptoRate}
+            onChangeText={setCryptoRate}
+            keyboardType="decimal-pad"
+            placeholder="180"
+          />
+          <Input
+            label="Bank / other USD rate (1 USD = ? Br)"
+            value={bankRate}
+            onChangeText={setBankRate}
+            keyboardType="decimal-pad"
+            placeholder="158"
+          />
+          {fx ? (
+            <Text className={`${theme.subtitle} text-xs mb-3`}>
+              Current: Crypto {fx.cryptoUsdToEtb} · Bank {fx.bankUsdToEtb} · Default view{' '}
+              {fx.displayCurrency}
+            </Text>
+          ) : null}
+          <Button title="Save rates" onPress={saveFxRates} loading={fxSaving} />
         </Card>
 
         <Text className={`${theme.subtitle} text-xs font-semibold uppercase mb-2 ml-1`}>
