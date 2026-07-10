@@ -5,40 +5,37 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
-  Dimensions,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { PieChart, LineChart, BarChart } from 'react-native-chart-kit';
 import { Card, ScreenHeader } from '../components/ui';
 import { AccountCard, EmptyState, ErrorState } from '../components/design';
 import { SkeletonAccountCards, SkeletonCard } from '../components/Skeleton';
 import { api, AccountsSummary } from '../services/api';
 import { formatCurrency } from '../utils/format';
 import { useAuth } from '../context/AuthContext';
-import { theme, typography } from '../theme';
-import { useThemeColors, useChartConfig, PIE_COLORS } from '../theme/useThemeColors';
+import { theme, typography, palette } from '../theme';
 import { RootStackParamList } from '../navigation/types';
-import { palette } from '../theme';
-
-const screenWidth = Dimensions.get('window').width;
 
 export default function AssetsDashboardScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const colors = useThemeColors();
-  const chartConfig = useChartConfig();
   const [summary, setSummary] = useState<AccountsSummary | null>(null);
+  const [displayCurrency, setDisplayCurrency] = useState<'ETB' | 'USD'>('ETB');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = async () => {
+  const load = async (currency?: 'ETB' | 'USD') => {
     try {
-      const data = await api.get<AccountsSummary>('/accounts/summary');
+      const view = currency || displayCurrency;
+      const data = await api.get<AccountsSummary>(
+        `/accounts/summary?displayCurrency=${view}`
+      );
       setSummary(data);
+      setDisplayCurrency(data.displayCurrency);
       setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load assets');
@@ -47,13 +44,32 @@ export default function AssetsDashboardScreen() {
     }
   };
 
-  useFocusEffect(useCallback(() => { load(); }, []));
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
     await load();
     setRefreshing(false);
   };
+
+  const switchCurrency = async (next: 'ETB' | 'USD') => {
+    setDisplayCurrency(next);
+    setLoading(true);
+    try {
+      await api.put('/settings/fx', { displayCurrency: next });
+      await load(next);
+    } catch {
+      await load(next);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fx = summary?.fx;
 
   return (
     <ScrollView
@@ -77,9 +93,29 @@ export default function AssetsDashboardScreen() {
       />
 
       <View className="px-5">
-        {error ? <ErrorState message={error} onRetry={load} /> : null}
+        <View className="flex-row mb-4 bg-slate-200 dark:bg-navy-800 rounded-xl p-1">
+          {(['ETB', 'USD'] as const).map((c) => (
+            <TouchableOpacity
+              key={c}
+              onPress={() => switchCurrency(c)}
+              className={`flex-1 py-2.5 rounded-lg items-center ${
+                displayCurrency === c ? 'bg-accent' : ''
+              }`}
+            >
+              <Text
+                className={`font-semibold text-sm ${
+                  displayCurrency === c ? 'text-white' : theme.subtitle
+                }`}
+              >
+                View in {c}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-        {loading ? (
+        {error ? <ErrorState message={error} onRetry={() => load()} /> : null}
+
+        {loading && !summary ? (
           <>
             <SkeletonCard />
             <SkeletonAccountCards />
@@ -87,19 +123,37 @@ export default function AssetsDashboardScreen() {
         ) : summary ? (
           <>
             <Animated.View entering={FadeInDown.duration(400)}>
-              <Card className="mb-4 bg-accent/10 dark:bg-accent/10 border-accent/30">
-                <Text className={`${theme.subtitle} text-sm`}>Total Assets</Text>
-                {summary.totalsByCurrency.length === 0 ? (
-                  <Text className={`${theme.title} ${typography.display} mt-1`}>$0.00</Text>
-                ) : (
-                  summary.totalsByCurrency.map((t) => (
-                    <Text key={t.currency} className={`${theme.title} ${typography.display} mt-1`}>
-                      {formatCurrency(t.total)} {t.currency}
-                    </Text>
-                  ))
-                )}
+              <Card className="mb-3 bg-accent/10 border-accent/30">
+                <Text className={`${theme.subtitle} text-sm`}>
+                  Total Assets ({displayCurrency})
+                </Text>
+                <Text className={`${theme.title} ${typography.display} mt-1`}>
+                  {formatCurrency(summary.totalConverted || 0, displayCurrency)}
+                </Text>
+                {fx ? (
+                  <Text className={`${theme.subtitle} text-xs mt-2`}>
+                    Rates: Crypto/Grey 1 USD = {fx.cryptoUsdToEtb} Br · Bank 1 USD ={' '}
+                    {fx.bankUsdToEtb} Br
+                  </Text>
+                ) : null}
               </Card>
             </Animated.View>
+
+            {summary.totalsByCurrency.length > 1 && (
+              <Card className="mb-4">
+                <Text className={`${theme.subtitle} text-xs uppercase font-semibold mb-2`}>
+                  By original currency
+                </Text>
+                {summary.totalsByCurrency.map((t) => (
+                  <View key={t.currency} className="flex-row justify-between py-1">
+                    <Text className={theme.subtitle}>{t.currency}</Text>
+                    <Text className={`${theme.title} font-medium`}>
+                      {formatCurrency(t.total, t.currency)}
+                    </Text>
+                  </View>
+                ))}
+              </Card>
+            )}
 
             <View className="flex-row justify-between items-center mb-3">
               <Text className={`${theme.title} ${typography.subheading}`}>Your Accounts</Text>
@@ -117,6 +171,7 @@ export default function AssetsDashboardScreen() {
                 >
                   <AccountCard
                     {...account}
+                    displayCurrency={displayCurrency}
                     onPress={() =>
                       navigation.navigate('AccountDetail', { accountId: account._id })
                     }
