@@ -1,62 +1,37 @@
-import { ReactNode, useRef, useCallback } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ScrollViewProps,
-  View,
-  findNodeHandle,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ReactNode } from 'react';
+import { View, ViewProps } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { theme } from '../theme';
 
-interface KeyboardFormScreenProps extends ScrollViewProps {
+interface KeyboardFormScreenProps {
   children: ReactNode;
-  headerOffset?: number;
+  contentContainerClassName?: string;
+  className?: string;
+  style?: ViewProps['style'];
 }
 
+/**
+ * Scrolls the focused input above the keyboard (iOS + Android).
+ */
 export function KeyboardFormScreen({
   children,
-  headerOffset = 0,
   contentContainerClassName,
-  ...scrollProps
+  className,
+  style,
 }: KeyboardFormScreenProps) {
-  const insets = useSafeAreaInsets();
-  const scrollRef = useRef<ScrollView>(null);
-
-  const keyboardVerticalOffset =
-    Platform.OS === 'ios' ? insets.top + headerOffset + 10 : headerOffset;
-
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className={`flex-1 ${theme.screen}`}
-      keyboardVerticalOffset={keyboardVerticalOffset}
-    >
-      <ScrollView
-        ref={scrollRef}
+    <View className={`flex-1 ${theme.screen} ${className || ''}`} style={style}>
+      <KeyboardAwareScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 48 }}
+        contentContainerClassName={contentContainerClassName}
         keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets
-        contentContainerClassName={`px-5 py-6 pb-12 ${contentContainerClassName || ''}`}
-        {...scrollProps}
+        bottomOffset={40}
+        extraKeyboardSpace={20}
+        showsVerticalScrollIndicator={false}
       >
         {children}
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-}
-
-export function useScrollToInput(scrollRef: React.RefObject<ScrollView | null>) {
-  return useCallback(
-    (inputRef: React.RefObject<View | null>) => {
-      if (!scrollRef.current || !inputRef.current) return;
-      const node = findNodeHandle(inputRef.current);
-      if (node && scrollRef.current) {
-        setTimeout(() => {
-          scrollRef.current?.scrollResponderScrollNativeHandleToKeyboard(node, 80, true);
-        }, 100);
-      }
-    },
-    [scrollRef]
+      </KeyboardAwareScrollView>
+    </View>
   );
 }

@@ -9,6 +9,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Input, Button } from '../components/ui';
 import { KeyboardFormScreen } from '../components/KeyboardFormScreen';
+import { DatePickerField } from '../components/DatePickerField';
 import { CategoryChip } from '../components/design';
 import { api, Category, Transaction, Account, ApiError } from '../services/api';
 import { toInputDate, formatCurrency } from '../utils/format';
@@ -206,7 +207,7 @@ export default function AddTransactionScreen({ navigation, route }: Props) {
         <Input label="Custom Category" value={customCategory} onChangeText={setCustomCategory} placeholder="Enter category" />
       )}
 
-      <Input label="Date (YYYY-MM-DD)" value={date} onChangeText={setDate} />
+      <DatePickerField label="Date" value={date} onChange={setDate} />
       <Input label="Note (optional)" value={note} onChangeText={setNote} placeholder="Add a note..." multiline />
 
       <View className={`flex-row items-center justify-between mb-6 ${theme.card} rounded-xl px-4 py-3`}>

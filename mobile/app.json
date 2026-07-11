@@ -39,7 +39,8 @@
         {
           "faceIDPermission": "Allow Asset Tracker to use Face ID for quick sign-in."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "eas": {
