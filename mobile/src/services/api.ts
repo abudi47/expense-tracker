@@ -1,5 +1,18 @@
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api';
 
+export class ApiError extends Error {
+  code?: string;
+  status?: number;
+  data?: Record<string, unknown>;
+
+  constructor(message: string, status?: number, data?: Record<string, unknown>) {
+    super(message);
+    this.status = status;
+    this.data = data;
+    this.code = data?.code as string | undefined;
+  }
+}
+
 class ApiClient {
   private token: string | null = null;
 
@@ -15,16 +28,25 @@ class ApiClient {
       headers.Authorization = `Bearer ${this.token}`;
     }
 
-    const response = await fetch(`${BASE_URL}${path}`, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${BASE_URL}${path}`, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch {
+      throw new ApiError('Network error — check your connection', 0);
+    }
 
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      throw new Error(data.message || `Request failed (${response.status})`);
+      throw new ApiError(
+        data.message || `Request failed (${response.status})`,
+        response.status,
+        data
+      );
     }
 
     return data as T;
@@ -53,12 +75,14 @@ class ApiClient {
   async exportTransactions(filters: {
     type?: string;
     category?: string;
+    accountId?: string;
     startDate?: string;
     endDate?: string;
   }) {
     const params = new URLSearchParams({ format: 'json' });
     if (filters.type && filters.type !== 'all') params.append('type', filters.type);
     if (filters.category) params.append('category', filters.category);
+    if (filters.accountId) params.append('accountId', filters.accountId);
     if (filters.startDate) params.append('startDate', filters.startDate);
     if (filters.endDate) params.append('endDate', filters.endDate);
     return this.get<{ transactions: Transaction[] }>(`/transactions/export?${params}`);
@@ -67,10 +91,30 @@ class ApiClient {
 
 export const api = new ApiClient();
 
+export interface Account {
+  _id: string;
+  name: string;
+  icon: string;
+  color: string;
+  currency: string;
+  openingBalance?: number;
+  balance: number;
+  isArchived?: boolean;
+  sortOrder?: number;
+}
+
+export interface AccountsSummary {
+  totalsByCurrency: { currency: string; total: number }[];
+  accounts: Account[];
+  legacyTransactionCount: number;
+}
+
 export interface Transaction {
   _id: string;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'transfer';
   amount: number;
+  accountId?: string;
+  toAccountId?: string;
   category: string;
   source?: string;
   date: string;
@@ -98,6 +142,11 @@ export interface DashboardSummary {
   balance: number;
   totalIncome: number;
   totalExpenses: number;
+  accountsSummary: {
+    totalsByCurrency: { currency: string; total: number }[];
+    accounts: Account[];
+  };
+  legacy: { income: number; expenses: number; balance: number };
   thisMonth: { income: number; expenses: number; net: number };
   lastMonth: { income: number; expenses: number; net: number };
   spendingByCategory: { category: string; total: number }[];
@@ -114,4 +163,13 @@ export interface DashboardSummary {
 export interface TransactionsResponse {
   transactions: Transaction[];
   pagination: { total: number; page: number; limit: number; pages: number };
+}
+
+export interface OverdraftError {
+  code: 'OVERDRAFT';
+  message: string;
+  balance: number;
+  amount: number;
+  projectedBalance: number;
+  accountName?: string;
 }

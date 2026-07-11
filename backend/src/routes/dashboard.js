@@ -3,6 +3,7 @@ const Transaction = require('../models/Transaction');
 const Budget = require('../models/Budget');
 const Category = require('../models/Category');
 const auth = require('../middleware/auth');
+const { computeAllAccountBalances } = require('../utils/accountBalance');
 
 const router = express.Router();
 
@@ -24,16 +25,17 @@ router.get('/summary', async (req, res) => {
       now.getMonth() === 0 ? 11 : now.getMonth() - 1
     );
 
-    const [totals, thisMonthTotals, lastMonthTotals, categorySpending, monthlyTrend, budgets] =
+    const [totals, thisMonthTotals, lastMonthTotals, categorySpending, monthlyTrend, budgets, accounts] =
       await Promise.all([
         Transaction.aggregate([
-          { $match: { userId } },
+          { $match: { userId, accountId: { $exists: true } } },
           { $group: { _id: '$type', total: { $sum: '$amount' } } },
         ]),
         Transaction.aggregate([
           {
             $match: {
               userId,
+              accountId: { $exists: true },
               date: { $gte: thisMonth.start, $lte: thisMonth.end },
             },
           },
@@ -43,6 +45,7 @@ router.get('/summary', async (req, res) => {
           {
             $match: {
               userId,
+              accountId: { $exists: true },
               date: { $gte: lastMonth.start, $lte: lastMonth.end },
             },
           },
@@ -53,6 +56,7 @@ router.get('/summary', async (req, res) => {
             $match: {
               userId,
               type: 'expense',
+              accountId: { $exists: true },
               date: { $gte: thisMonth.start, $lte: thisMonth.end },
             },
           },
@@ -61,6 +65,7 @@ router.get('/summary', async (req, res) => {
         ]),
         getMonthlyTrend(userId, 6),
         Budget.find({ userId }),
+        computeAllAccountBalances(userId),
       ]);
 
     const totalMap = Object.fromEntries(totals.map((t) => [t._id, t.total]));
@@ -91,10 +96,43 @@ router.get('/summary', async (req, res) => {
       })
       .filter((b) => b.status !== 'ok');
 
+    const legacyTotals = await Transaction.aggregate([
+      { $match: { userId, accountId: { $exists: false } } },
+      { $group: { _id: '$type', total: { $sum: '$amount' } } },
+    ]);
+    const legacyMap = Object.fromEntries(legacyTotals.map((t) => [t._id, t.total]));
+
+    const byCurrency = {};
+    for (const account of accounts) {
+      if (!byCurrency[account.currency]) {
+        byCurrency[account.currency] = 0;
+      }
+      byCurrency[account.currency] += account.balance;
+    }
+
     res.json({
       balance: totalIncome - totalExpenses,
       totalIncome,
       totalExpenses,
+      accountsSummary: {
+        totalsByCurrency: Object.entries(byCurrency).map(([currency, total]) => ({
+          currency,
+          total,
+        })),
+        accounts: accounts.map((a) => ({
+          _id: a._id,
+          name: a.name,
+          icon: a.icon,
+          color: a.color,
+          currency: a.currency,
+          balance: a.balance,
+        })),
+      },
+      legacy: {
+        income: legacyMap.income || 0,
+        expenses: legacyMap.expense || 0,
+        balance: (legacyMap.income || 0) - (legacyMap.expense || 0),
+      },
       thisMonth: {
         income: thisMonthMap.income || 0,
         expenses: thisMonthMap.expense || 0,
@@ -129,6 +167,7 @@ async function getMonthlyTrend(userId, months) {
       {
         $match: {
           userId,
+          accountId: { $exists: true },
           date: { $gte: start, $lte: end },
         },
       },

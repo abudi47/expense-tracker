@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Expense Tracker",
+    "name": "Asset Tracker",
     "slug": "expense-tracker",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -17,10 +17,15 @@
     },
     "android": {
       "package": "com.expensetracker.app",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0f172a"
-      }
+      },
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -32,9 +37,15 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Allow Expense Tracker to use Face ID for quick sign-in."
+          "faceIDPermission": "Allow Asset Tracker to use Face ID for quick sign-in."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9d6dde4d-e6f8-4e4b-accd-5dadcc6e1ef7"
+      }
+    },
+    "owner": "abudi47"
   }
 }

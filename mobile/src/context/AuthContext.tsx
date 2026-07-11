@@ -29,7 +29,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
-const BIOMETRIC_KEY = 'biometric_enabled';
+
+const biometricKey = (email: string) => `biometric_enabled_${email.toLowerCase()}`;
+
+async function isBiometricEnabledForEmail(email: string): Promise<boolean> {
+  return (await SecureStore.getItemAsync(biometricKey(email))) === 'true';
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -51,15 +56,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setBiometricLabel(bio.label);
 
       const storedToken = await SecureStore.getItemAsync(TOKEN_KEY);
-      const storedUser = await SecureStore.getItemAsync(USER_KEY);
-      const bioEnabled = (await SecureStore.getItemAsync(BIOMETRIC_KEY)) === 'true';
-      setBiometricEnabled(bioEnabled);
+      const storedUserJson = await SecureStore.getItemAsync(USER_KEY);
 
-      if (storedToken && storedUser) {
+      if (storedToken && storedUserJson) {
+        const storedUser = JSON.parse(storedUserJson) as User;
         setHasStoredSession(true);
+        const bioEnabled = await isBiometricEnabledForEmail(storedUser.email);
+        setBiometricEnabled(bioEnabled);
+
         if (!bioEnabled) {
           setToken(storedToken);
-          setUser(JSON.parse(storedUser));
+          setUser(storedUser);
           api.setToken(storedToken);
         }
       }
@@ -77,6 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(newToken);
     setUser(newUser);
     setHasStoredSession(true);
+    const bioEnabled = await isBiometricEnabledForEmail(newUser.email);
+    setBiometricEnabled(bioEnabled);
   };
 
   const restoreStoredSession = async () => {
@@ -108,14 +117,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
-    await SecureStore.deleteItemAsync(USER_KEY);
-    await SecureStore.deleteItemAsync(BIOMETRIC_KEY);
+    const bioEnabled = biometricEnabled;
+
+    if (!bioEnabled) {
+      await SecureStore.deleteItemAsync(TOKEN_KEY);
+      await SecureStore.deleteItemAsync(USER_KEY);
+      setHasStoredSession(false);
+    }
+
     api.setToken(null);
     setToken(null);
     setUser(null);
-    setBiometricEnabled(false);
-    setHasStoredSession(false);
   };
 
   const loginWithBiometric = async () => {
@@ -130,17 +142,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!biometricAvailable) {
       throw new Error(`${biometricLabel} is not available on this device`);
     }
+    if (!user?.email) {
+      throw new Error('Sign in first to enable biometric login');
+    }
     const ok = await authenticateWithBiometric(`Enable ${biometricLabel} login`);
     if (!ok) {
       throw new Error(`${biometricLabel} authentication cancelled`);
     }
-    await SecureStore.setItemAsync(BIOMETRIC_KEY, 'true');
+    await SecureStore.setItemAsync(biometricKey(user.email), 'true');
     setBiometricEnabled(true);
   };
 
   const disableBiometric = async () => {
-    await SecureStore.deleteItemAsync(BIOMETRIC_KEY);
+    const email = user?.email;
+    if (email) {
+      await SecureStore.deleteItemAsync(biometricKey(email));
+    } else {
+      const storedUser = await SecureStore.getItemAsync(USER_KEY);
+      if (storedUser) {
+        await SecureStore.deleteItemAsync(biometricKey(JSON.parse(storedUser).email));
+      }
+    }
     setBiometricEnabled(false);
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    await SecureStore.deleteItemAsync(USER_KEY);
+    setHasStoredSession(false);
   };
 
   const canUseBiometricLogin =

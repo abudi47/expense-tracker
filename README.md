@@ -100,6 +100,26 @@ EXPO_PUBLIC_API_URL=http://localhost:5000/api
 
 > **Physical device:** Replace `localhost` with your computer's local IP (e.g. `http://192.168.1.10:5000/api`).
 
+## Multi-Account Assets (v1.1)
+
+- Create/manage accounts (name, icon, color, currency, opening balance)
+- Total assets dashboard grouped by currency
+- Income/expense linked to accounts with overdraft warnings
+- Transfers between accounts
+- Per-account transaction history
+- Legacy transactions (pre-accounts) preserved with badge, excluded from account balances
+
+### New API Endpoints
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| GET | `/api/accounts` | List accounts with balances |
+| GET | `/api/accounts/summary` | Total assets breakdown |
+| GET | `/api/accounts/:id` | Account detail + recent txs |
+| POST/PUT/DELETE | `/api/accounts` | Account CRUD |
+
+Run `npm run migrate:accounts` in backend to seed default accounts for existing users (non-destructive).
+
 ## Features
 
 - **Auth** — Register/login with email + password; JWT stored in SecureStore

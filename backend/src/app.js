@@ -5,6 +5,7 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
 const transactionRoutes = require('./routes/transactions');
 const budgetRoutes = require('./routes/budgets');
+const accountRoutes = require('./routes/accounts');
 const dashboardRoutes = require('./routes/dashboard');
 
 const app = express();
@@ -29,6 +30,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/budgets', budgetRoutes);
+app.use('/api/accounts', accountRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
 app.use((err, req, res, next) => {

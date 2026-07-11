@@ -6,15 +6,17 @@ export type AuthStackParamList = {
 };
 
 export type MainTabParamList = {
-  Dashboard: undefined;
+  Assets: undefined;
   Transactions: undefined;
-  Budgets: undefined;
-  Reports: undefined;
+  Insights: undefined;
   Settings: undefined;
 };
 
 export type RootStackParamList = {
   Auth: undefined;
   MainTabs: undefined;
-  AddTransaction: { transaction?: Transaction };
+  AddTransaction: { transaction?: Transaction; accountId?: string };
+  AccountDetail: { accountId: string };
+  ManageAccounts: undefined;
+  Transfer: undefined;
 };

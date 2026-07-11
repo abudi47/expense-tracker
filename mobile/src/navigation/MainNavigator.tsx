@@ -1,53 +1,45 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import DashboardScreen from '../screens/DashboardScreen';
+import AssetsDashboardScreen from '../screens/AssetsDashboardScreen';
 import TransactionListScreen from '../screens/TransactionListScreen';
-import BudgetsScreen from '../screens/BudgetsScreen';
-import ReportsScreen from '../screens/ReportsScreen';
+import InsightsScreen from '../screens/InsightsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import { MainTabParamList } from './types';
 import { useTheme } from '../context/ThemeContext';
-import { theme as appTheme } from '../theme';
+import { palette } from '../theme';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export default function MainNavigator() {
   const { isDark } = useTheme();
-  const colors = isDark ? appTheme.tabBar.dark : appTheme.tabBar.light;
+  const tabColors = isDark ? palette.dark.tabBar : palette.light.tabBar;
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.bg,
-          borderTopColor: colors.border,
-          paddingBottom: 6,
-          paddingTop: 4,
-          height: 64,
+          backgroundColor: tabColors.bg,
+          borderTopColor: tabColors.border,
+          paddingBottom: 4,
+          height: 60,
         },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
-        tabBarActiveTintColor: colors.active,
-        tabBarInactiveTintColor: colors.inactive,
+        tabBarActiveTintColor: tabColors.active,
+        tabBarInactiveTintColor: tabColors.inactive,
         tabBarIcon: ({ color, size }) => {
           const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
-            Dashboard: 'home-outline',
+            Assets: 'wallet',
             Transactions: 'list-outline',
-            Budgets: 'wallet-outline',
-            Reports: 'bar-chart-outline',
+            Insights: 'bar-chart-outline',
             Settings: 'settings-outline',
           };
           return <Ionicons name={icons[route.name]} size={size} color={color} />;
         },
       })}
     >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ title: 'Home' }} />
+      <Tab.Screen name="Assets" component={AssetsDashboardScreen} />
       <Tab.Screen name="Transactions" component={TransactionListScreen} />
-      <Tab.Screen name="Budgets" component={BudgetsScreen} />
-      <Tab.Screen name="Reports" component={ReportsScreen} />
+      <Tab.Screen name="Insights" component={InsightsScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );

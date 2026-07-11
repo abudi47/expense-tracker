@@ -5,8 +5,11 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
+  Pressable,
 } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { theme } from '../theme';
+import { useThemeColors } from '../theme/useThemeColors';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -14,6 +17,7 @@ interface InputProps extends TextInputProps {
 }
 
 export function Input({ label, error, className, ...props }: InputProps) {
+  const colors = useThemeColors();
   return (
     <View className="mb-4">
       {label && (
@@ -21,7 +25,7 @@ export function Input({ label, error, className, ...props }: InputProps) {
       )}
       <TextInput
         className={`${theme.input} rounded-xl px-4 py-3.5 text-base ${error ? 'border-red-500' : ''} ${className || ''}`}
-        placeholderTextColor="#94a3b8"
+        placeholderTextColor={colors.textMuted}
         {...props}
       />
       {error && <Text className="text-red-500 dark:text-red-400 text-xs mt-1">{error}</Text>}
@@ -38,6 +42,8 @@ interface ButtonProps {
   icon?: React.ReactNode;
 }
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export function Button({
   title,
   onPress,
@@ -46,6 +52,10 @@ export function Button({
   disabled,
   icon,
 }: ButtonProps) {
+  const colors = useThemeColors();
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
   const variants = {
     primary: 'bg-accent',
     secondary: 'bg-slate-200 dark:bg-navy-700 border border-slate-300 dark:border-navy-500',
@@ -61,32 +71,43 @@ export function Button({
   };
 
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.8}
+      onPressIn={() => {
+        scale.value = withSpring(0.97);
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1);
+      }}
+      style={animStyle}
       className={`rounded-xl py-4 items-center flex-row justify-center gap-2 ${variants[variant]} ${disabled || loading ? 'opacity-50' : ''}`}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'secondary' || variant === 'ghost' ? '#3b82f6' : '#fff'} />
+        <ActivityIndicator
+          color={variant === 'secondary' || variant === 'ghost' ? colors.tabBar.active : '#fff'}
+        />
       ) : (
         <>
           {icon}
           <Text className={`${textVariants[variant]} font-semibold text-base`}>{title}</Text>
         </>
       )}
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 
 interface CardProps {
   children: React.ReactNode;
   className?: string;
+  style?: object;
 }
 
-export function Card({ children, className }: CardProps) {
+export function Card({ children, className, style }: CardProps) {
   return (
-    <View className={`${theme.card} rounded-2xl p-4 ${className || ''}`}>{children}</View>
+    <View className={`${theme.card} rounded-2xl p-4 ${className || ''}`} style={style}>
+      {children}
+    </View>
   );
 }
 
@@ -121,17 +142,19 @@ export function SettingRow({ icon, title, subtitle, onPress, right }: SettingRow
 interface ScreenHeaderProps {
   title: string;
   subtitle?: string;
+  right?: React.ReactNode;
 }
 
-export function ScreenHeader({ title, subtitle }: ScreenHeaderProps) {
+export function ScreenHeader({ title, subtitle, right }: ScreenHeaderProps) {
   return (
-    <View className="px-5 pt-14 pb-4">
-      {subtitle ? (
-        <Text className={`${theme.subtitle} text-sm`}>{subtitle}</Text>
-      ) : null}
-      <Text className={`${theme.title} text-2xl font-bold ${subtitle ? 'mt-1' : ''}`}>
-        {title}
-      </Text>
+    <View className="px-5 pt-14 pb-4 flex-row items-end justify-between">
+      <View className="flex-1">
+        {subtitle ? <Text className={`${theme.subtitle} text-sm`}>{subtitle}</Text> : null}
+        <Text className={`${theme.title} text-2xl font-bold ${subtitle ? 'mt-1' : ''}`}>
+          {title}
+        </Text>
+      </View>
+      {right}
     </View>
   );
 }

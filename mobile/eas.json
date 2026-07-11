@@ -17,7 +17,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://YOUR-PROJECT.vercel.app/api"
+        "EXPO_PUBLIC_API_URL": "https://expense-tracker-flax-seven-45.vercel.app/api"
       }
     },
     "production": {
@@ -28,7 +28,7 @@
         "resourceClass": "m-medium"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://YOUR-PROJECT.vercel.app/api"
+        "EXPO_PUBLIC_API_URL": "https://expense-tracker-flax-seven-45.vercel.app/api"
       }
     }
   },

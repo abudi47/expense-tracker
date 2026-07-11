@@ -4,12 +4,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { Card, Button, SettingRow, ScreenHeader } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { ThemeMode, theme } from '../theme';
+import { palette, theme, ThemeMode } from '../theme';
+import { useThemeColors } from '../theme/useThemeColors';
 
 export default function SettingsScreen() {
   const { user, logout, biometricAvailable, biometricLabel, biometricEnabled, enableBiometric, disableBiometric } =
     useAuth();
   const { mode, setMode, isDark } = useTheme();
+  const colors = useThemeColors();
   const [bioBusy, setBioBusy] = useState(false);
 
   const handleLogout = () => {
@@ -71,11 +73,11 @@ export default function SettingsScreen() {
         </Text>
         <Card className="mb-4">
           <SettingRow
-            icon={<Ionicons name={isDark ? 'moon' : 'sunny'} size={22} color="#3b82f6" />}
+            icon={<Ionicons name={isDark ? 'moon' : 'sunny'} size={22} color={palette.primary} />}
             title="Theme"
             subtitle={themeLabel}
             onPress={cycleTheme}
-            right={<Ionicons name="chevron-forward" size={20} color="#94a3b8" />}
+            right={<Ionicons name="chevron-forward" size={20} color={colors.icon} />}
           />
         </Card>
 
@@ -85,7 +87,7 @@ export default function SettingsScreen() {
         <Card className="mb-4">
           {biometricAvailable ? (
             <SettingRow
-              icon={<Ionicons name="finger-print" size={22} color="#3b82f6" />}
+              icon={<Ionicons name="finger-print" size={22} color={palette.primary} />}
               title={`${biometricLabel} login`}
               subtitle={
                 biometricEnabled
@@ -97,13 +99,13 @@ export default function SettingsScreen() {
                   value={biometricEnabled}
                   onValueChange={handleBiometricToggle}
                   disabled={bioBusy}
-                  trackColor={{ false: '#cbd5e1', true: '#3b82f6' }}
+                  trackColor={{ false: colors.switchOff, true: palette.primary }}
                 />
               }
             />
           ) : (
             <SettingRow
-              icon={<Ionicons name="finger-print" size={22} color="#94a3b8" />}
+              icon={<Ionicons name="finger-print" size={22} color={colors.icon} />}
               title="Biometric login"
               subtitle="Not available on this device"
             />
@@ -115,9 +117,9 @@ export default function SettingsScreen() {
         </Text>
         <Card className="mb-6">
           <SettingRow
-            icon={<Ionicons name="information-circle-outline" size={22} color="#94a3b8" />}
+            icon={<Ionicons name="information-circle-outline" size={22} color={colors.icon} />}
             title="App version"
-            subtitle="1.0.0"
+            subtitle="1.1.0"
           />
         </Card>
 
