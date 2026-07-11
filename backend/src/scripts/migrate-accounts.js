@@ -9,7 +9,10 @@ const Transaction = require('../models/Transaction');
  */
 const migrate = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 15000,
+      family: 4,
+    });
     console.log('Connected to MongoDB');
 
     const userIds = await Transaction.distinct('userId');
