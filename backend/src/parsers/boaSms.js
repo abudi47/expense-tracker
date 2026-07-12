@@ -1,4 +1,4 @@
-const { stripNoise, parseAmount, normalizeResult } = require('./shared');
+const { stripNoise, parseAmount, normalizeResult, extractReference, stableFallbackRef } = require('./shared');
 
 /**
  * Bank of Abyssinia SMS — credited / debited patterns + ?trx= ref
@@ -24,7 +24,9 @@ function parseBoaSms(text = '') {
   const accountMatch = raw.match(/account\s+([Xx*\d-]+)/i);
   const senderMatch = raw.match(/by\s+([^.]+?)(?:\.|$)/i);
   const balMatch = raw.match(/(?:Available\s+)?Balance[:\s]*ETB\s*([\d,.]+)/i);
-  const trxMatch = raw.match(/[?&]trx=([A-Za-z0-9_-]+)/i);
+  const ref =
+    extractReference(raw) ||
+    stableFallbackRef('boa', direction, amount, 'ETB', cleaned);
 
   return normalizeResult({
     source: 'boa',
@@ -33,7 +35,7 @@ function parseBoaSms(text = '') {
     direction,
     date: new Date(),
     accountHint: accountMatch?.[1] || senderMatch?.[1]?.trim() || 'boa',
-    rawReference: trxMatch?.[1] || `boa-${amount}-${Date.now()}`,
+    rawReference: ref,
     reportedBalance: parseAmount(balMatch?.[1]) ?? undefined,
     rawSnippet: cleaned.slice(0, 400),
   });

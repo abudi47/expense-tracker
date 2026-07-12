@@ -29,7 +29,22 @@ async function upsertDetectedFromParsed(userId, parsed) {
     parsed.rawReference ||
     `${parsed.source}-${parsed.amount}-${parsed.date?.getTime?.() || Date.now()}`;
 
-  const existing = await DetectedItem.findOne({ userId, externalRef });
+  let existing = await DetectedItem.findOne({ userId, externalRef });
+
+  // Soft dedupe: same source/amount/direction still in review (unstable refs)
+  if (!existing) {
+    const since = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    existing = await DetectedItem.findOne({
+      userId,
+      source: parsed.source,
+      amount: parsed.amount,
+      currency: parsed.currency,
+      direction: parsed.direction,
+      status: { $in: ['needs_review', 'duplicate'] },
+      createdAt: { $gte: since },
+    }).sort({ createdAt: -1 });
+  }
+
   if (existing) {
     if (existing.status === 'needs_review') {
       return { item: existing, outcome: 'already_queued' };

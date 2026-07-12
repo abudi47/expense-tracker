@@ -10,6 +10,19 @@ function parseEmail(subject, body) {
 
 function parseNotification(title = '', body = '') {
   const text = `${title}\n${body}`;
+  const lower = text.toLowerCase();
+
+  // Prefer source hinted by title/package keywords
+  if (/telebirr|e-money/.test(lower)) {
+    return parseTelebirrSms(text) || parseCbeSms(text) || parseBoaSms(text) || null;
+  }
+  if (/abyssinia|boa/.test(lower)) {
+    return parseBoaSms(text) || parseCbeSms(text) || parseTelebirrSms(text) || null;
+  }
+  if (/cbe|commercial bank|mbreciept/.test(lower)) {
+    return parseCbeSms(text) || parseBoaSms(text) || parseTelebirrSms(text) || null;
+  }
+
   return (
     parseCbeSms(text) ||
     parseBoaSms(text) ||

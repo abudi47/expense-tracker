@@ -19,6 +19,32 @@ function parseAmount(raw) {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Common bank/wallet reference patterns */
+function extractReference(text = '') {
+  const raw = String(text);
+  const match =
+    raw.match(/mbreciept\.cbe\.com\.et\/([A-Za-z0-9._-]+)/i) ||
+    raw.match(/[?&]trx=([A-Za-z0-9_-]+)/i) ||
+    raw.match(/transaction\s+number\s+is\s+([A-Za-z0-9-]+)/i) ||
+    raw.match(
+      /(?:Transaction\s*(?:ID|No\.?|Number)|Txn\s*ID|Ref(?:erence)?|ID)[:\s#]*([A-Za-z0-9_-]{6,})/i
+    ) ||
+    raw.match(/\b(FT[A-Z0-9]{8,})\b/i);
+  return match?.[1] || null;
+}
+
+/** Stable fallback when message has no explicit ref (avoid Date.now uniqueness) */
+function stableFallbackRef(source, direction, amount, currency, snippet = '') {
+  const day = new Date().toISOString().slice(0, 10);
+  const snip = String(snippet)
+    .toLowerCase()
+    .replace(/balance[^\d]*[\d,.]+/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 48);
+  return `${source}-${direction}-${amount}-${currency}-${day}-${snip}`.slice(0, 180);
+}
+
 function normalizeResult(partial) {
   return {
     source: partial.source || 'other',
@@ -35,4 +61,10 @@ function normalizeResult(partial) {
   };
 }
 
-module.exports = { stripNoise, parseAmount, normalizeResult };
+module.exports = {
+  stripNoise,
+  parseAmount,
+  extractReference,
+  stableFallbackRef,
+  normalizeResult,
+};

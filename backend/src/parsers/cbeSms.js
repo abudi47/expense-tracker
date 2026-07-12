@@ -1,16 +1,20 @@
-const { stripNoise, parseAmount, normalizeResult } = require('./shared');
+const { stripNoise, parseAmount, normalizeResult, extractReference, stableFallbackRef } = require('./shared');
 
 /**
  * CBE SMS — credited/transferred ETB{amount}, balance, receipt URL slug.
  */
 function parseCbeSms(text = '') {
+  const raw = String(text);
   const cleaned = stripNoise(text);
-  if (!/ETB|cbe|commercial bank/i.test(cleaned) && !/mbreciept\.cbe\.com\.et/i.test(text)) {
-    // Still try if ETB pattern present
-    if (!/ETB\s*[\d,]+/i.test(text)) return null;
+
+  const looksCbe =
+    /cbe|commercial bank|mbreciept\.cbe\.com\.et/i.test(raw) ||
+    /Dear Customer/i.test(raw);
+  // Avoid stealing telebirr/generic "received ETB" messages
+  if (!looksCbe && !/mbreciept\.cbe\.com\.et/i.test(raw)) {
+    return null;
   }
 
-  const raw = String(text);
   let direction = null;
   if (/credited|received|deposited/i.test(raw)) direction = 'incoming';
   else if (/transferred|debited|paid|sent/i.test(raw)) direction = 'outgoing';
@@ -23,12 +27,10 @@ function parseCbeSms(text = '') {
   const feeMatch = raw.match(/(?:service\s*)?fee[:\s]*ETB\s*([\d,.]+)/i);
   const vatMatch = raw.match(/VAT[:\s]*ETB\s*([\d,.]+)/i);
   const balMatch = raw.match(/(?:current\s+)?balance(?:\s+is)?[:\s]*ETB\s*([\d,.]+)/i);
-
-  const receiptMatch =
-    raw.match(/mbreciept\.cbe\.com\.et\/([A-Za-z0-9._-]+)/i) ||
-    raw.match(/\/v2-([A-Za-z0-9._-]+)/i);
-
   const accountMatch = raw.match(/account\s+([Xx*\d]+)/i);
+  const ref =
+    extractReference(raw) ||
+    stableFallbackRef('cbe', direction, amount, 'ETB', cleaned);
 
   return normalizeResult({
     source: 'cbe',
@@ -37,7 +39,7 @@ function parseCbeSms(text = '') {
     direction,
     date: new Date(),
     accountHint: accountMatch?.[1] || 'cbe',
-    rawReference: receiptMatch?.[1] || `cbe-${amount}-${Date.now()}`,
+    rawReference: ref,
     fee: parseAmount(feeMatch?.[1]) ?? undefined,
     vat: parseAmount(vatMatch?.[1]) ?? undefined,
     reportedBalance: parseAmount(balMatch?.[1]) ?? undefined,

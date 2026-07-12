@@ -1,4 +1,4 @@
-const { stripNoise, parseAmount, normalizeResult } = require('./shared');
+const { stripNoise, parseAmount, normalizeResult, extractReference, stableFallbackRef } = require('./shared');
 
 /**
  * telebirr SMS — transferred / received with fee and balance
@@ -15,12 +15,13 @@ function parseTelebirrSms(text = '') {
   else if (/received ETB|credited|You have received/i.test(raw)) direction = 'incoming';
   if (!direction) return null;
 
-  const amountMatch = raw.match(/(?:transferred|received)\s+ETB\s*([\d,.]+)/i);
+  const amountMatch =
+    raw.match(/(?:transferred|received)\s+ETB\s*([\d,.]+)/i) ||
+    raw.match(/ETB\s*([\d,.]+)/i);
   const amount = parseAmount(amountMatch?.[1]);
   if (amount == null) return null;
 
   const recipientMatch = raw.match(/to\s+([^(]+)\s*\(([^)]+)\)/i);
-  const refMatch = raw.match(/transaction number is\s+([A-Za-z0-9-]+)/i);
   const feeMatch = raw.match(/service fee is\s+ETB\s*([\d,.]+)/i);
   const vatMatch = raw.match(/VAT[:\s]*ETB\s*([\d,.]+)/i);
   const balMatch = raw.match(/balance is\s+ETB\s*([\d,.]+)/i);
@@ -32,6 +33,10 @@ function parseTelebirrSms(text = '') {
     if (!Number.isNaN(parsed.getTime())) date = parsed;
   }
 
+  const ref =
+    extractReference(raw) ||
+    stableFallbackRef('telebirr', direction, amount, 'ETB', cleaned);
+
   return normalizeResult({
     source: 'telebirr',
     amount,
@@ -39,7 +44,7 @@ function parseTelebirrSms(text = '') {
     direction,
     date,
     accountHint: recipientMatch?.[1]?.trim() || 'telebirr',
-    rawReference: refMatch?.[1] || `telebirr-${amount}-${date.getTime()}`,
+    rawReference: ref,
     fee: parseAmount(feeMatch?.[1]) ?? undefined,
     vat: parseAmount(vatMatch?.[1]) ?? undefined,
     reportedBalance: parseAmount(balMatch?.[1]) ?? undefined,
