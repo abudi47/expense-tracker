@@ -30,7 +30,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
 
-const biometricKey = (email: string) => `biometric_enabled_${email.toLowerCase()}`;
+/** SecureStore keys may only contain alphanumeric, '.', '-', '_' — no '@' etc. */
+const biometricKey = (email: string) =>
+  `biometric_enabled_${email.toLowerCase().replace(/[^a-z0-9._-]/g, '_')}`;
 
 async function isBiometricEnabledForEmail(email: string): Promise<boolean> {
   return (await SecureStore.getItemAsync(biometricKey(email))) === 'true';
