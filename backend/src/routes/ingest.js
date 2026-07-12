@@ -221,6 +221,7 @@ router.post('/gmail/sync', async (req, res) => {
     let duplicates = 0;
     let alreadyQueued = 0;
     let skippedOther = 0;
+    const { isNonTransactionMail } = require('../parsers/shared');
 
     for (const msg of list.messages || []) {
       const full = await gmailGet(
@@ -238,6 +239,19 @@ router.post('/gmail/sync', async (req, res) => {
         from.includes('grey');
       if (!allowed) {
         skippedOther += 1;
+        continue;
+      }
+
+      if (isNonTransactionMail(subject, body)) {
+        skippedOther += 1;
+        if (samples.length < 5) {
+          samples.push({
+            reason: 'not_a_transaction',
+            from: from.slice(0, 80),
+            subject: subject.slice(0, 120),
+            snippet: 'Skipped (login/security/marketing — not a money movement)',
+          });
+        }
         continue;
       }
 

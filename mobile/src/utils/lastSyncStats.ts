@@ -25,6 +25,7 @@ export function formatSyncToast(r: GmailSyncBreakdown): string {
     `${r.queued} new`,
   ];
   if (r.parseFailed > 0) parts.push(`${r.parseFailed} couldn’t parse`);
+  if ((r.skippedOther || 0) > 0) parts.push(`${r.skippedOther} skipped`);
   if (r.alreadyQueued > 0) parts.push(`${r.alreadyQueued} already queued`);
   if (r.duplicates > 0) parts.push(`${r.duplicates} already seen`);
   return parts.join(' · ');

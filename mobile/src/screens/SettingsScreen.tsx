@@ -14,7 +14,7 @@ import { useThemeColors } from '../theme/useThemeColors';
 import { haptics } from '../utils/haptics';
 import { RootStackParamList } from '../navigation/types';
 import { startAndroidNotificationBridge } from '../services/androidNotificationListener';
-import { enablePushAlerts, disablePushAlerts, notifyLocalDetected } from '../services/pushNotifications';
+import { enablePushAlerts, disablePushAlerts, notifyLocalDetected, PushSetupError } from '../services/pushNotifications';
 import { formatSyncToast, saveLastSyncStats } from '../utils/lastSyncStats';
 import { emitDataRefresh } from '../utils/dataRefresh';
 
@@ -210,6 +210,11 @@ export default function SettingsScreen() {
       }
       await loadAll();
     } catch (err) {
+      if (err instanceof PushSetupError) {
+        showToast(err.message, 'info');
+        await loadAll();
+        return;
+      }
       showToast(err instanceof Error ? err.message : 'Could not update push alerts', 'error');
     }
   };
@@ -468,7 +473,13 @@ export default function SettingsScreen() {
           <SettingRow
             icon={<Ionicons name="information-circle-outline" size={22} color={colors.icon} />}
             title="App version"
-            subtitle="1.1.0"
+            subtitle="1.1.2"
+          />
+          <View className={`h-px my-1 ${theme.divider}`} />
+          <SettingRow
+            icon={<Ionicons name="code-slash-outline" size={22} color={palette.primary} />}
+            title="Built by Abudi_47"
+            subtitle="Asset Tracker"
           />
         </Card>
 

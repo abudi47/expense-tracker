@@ -2,6 +2,12 @@
 
 function stripNoise(text = '') {
   return String(text)
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#?\w+;/g, ' ')
     .replace(/https?:\/\/\S+/gi, ' ')
     .replace(/Thank you for using[^.]*\.?/gi, ' ')
     .replace(/Bank of Abyssinia/gi, ' ')
@@ -15,8 +21,9 @@ function stripNoise(text = '') {
 function parseAmount(raw) {
   if (raw == null) return null;
   const cleaned = String(raw).replace(/,/g, '').replace(/[^\d.]/g, '');
+  if (!cleaned || cleaned === '.') return null;
   const n = parseFloat(cleaned);
-  return Number.isFinite(n) ? n : null;
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 /** Common bank/wallet reference patterns */
@@ -45,6 +52,16 @@ function stableFallbackRef(source, direction, amount, currency, snippet = '') {
   return `${source}-${direction}-${amount}-${currency}-${day}-${snip}`.slice(0, 180);
 }
 
+/** Security / marketing mail — not a money movement */
+function isNonTransactionMail(subject = '', body = '') {
+  const t = `${subject}\n${body}`.toLowerCase();
+  return (
+    /new device|ip login|login alert|security alert|unusual activity|2fa|otp code|verification code|verify your|password reset|products updates|newsletter|welcome to|account opened|kyc|identity verification/.test(
+      t
+    ) && !/(deposit|withdraw|amount received|amount tendered|card transaction|credited|debited)/.test(t)
+  );
+}
+
 function normalizeResult(partial) {
   return {
     source: partial.source || 'other',
@@ -66,5 +83,6 @@ module.exports = {
   parseAmount,
   extractReference,
   stableFallbackRef,
+  isNonTransactionMail,
   normalizeResult,
 };

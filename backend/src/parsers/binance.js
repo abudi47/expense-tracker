@@ -1,15 +1,28 @@
-const { stripNoise, parseAmount, normalizeResult } = require('./shared');
+const {
+  stripNoise,
+  parseAmount,
+  normalizeResult,
+  extractReference,
+  stableFallbackRef,
+  isNonTransactionMail,
+} = require('./shared');
 
 /**
  * Binance deposit/withdrawal confirmation email patterns — broadened for real templates.
+ * Security / login alerts intentionally return null (not money movements).
  */
 function parseBinance(subject = '', body = '') {
+  if (isNonTransactionMail(subject, body)) return null;
+
   const text = stripNoise(`${subject}\n${body}`);
   const lower = text.toLowerCase();
 
   if (!/binance/i.test(subject + body) && !/deposit|withdraw/i.test(lower)) {
     return null;
   }
+
+  // Login / device alerts often contain "binance" but no money move
+  if (/login alert|new device|ip login|security alert/i.test(subject)) return null;
 
   let direction = null;
   if (/withdraw|sent|outgoing|debit/i.test(text)) direction = 'outgoing';
@@ -30,9 +43,11 @@ function parseBinance(subject = '', body = '') {
   const currency = (amountMatch[2] || 'USDT').toUpperCase();
   if (amount == null) return null;
 
-  const refMatch =
-    text.match(/(?:TxID|Transaction ID|Order ID|Withdraw ID|Deposit ID)[:\s#]*([A-Za-z0-9_-]+)/i) ||
-    text.match(/\b([A-F0-9]{16,64})\b/);
+  const ref =
+    extractReference(text) ||
+    text.match(/(?:TxID|Transaction ID|Order ID|Withdraw ID|Deposit ID)[:\s#]*([A-Za-z0-9_-]+)/i)?.[1] ||
+    text.match(/\b([A-F0-9]{16,64})\b/)?.[1] ||
+    stableFallbackRef('binance', direction, amount, currency, text);
 
   return normalizeResult({
     source: 'binance',
@@ -41,9 +56,7 @@ function parseBinance(subject = '', body = '') {
     direction,
     date: new Date(),
     accountHint: 'binance',
-    rawReference: refMatch
-      ? refMatch[1]
-      : `binance-${direction}-${amount}-${currency}-${Date.now()}`,
+    rawReference: ref,
     rawSnippet: text.slice(0, 400),
   });
 }

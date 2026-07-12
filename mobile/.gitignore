@@ -3,3 +3,5 @@ node_modules/
 dist/
 .env
 *.log
+*-firebase-adminsdk-*.json
+**/firebase-adminsdk*.json

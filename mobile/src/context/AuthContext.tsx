@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await registerForPushNotifications();
       }
     } catch {
-      // optional
+      // FCM may be unconfigured — ignore so login still works
     }
   };
 
@@ -125,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await registerForPushNotifications();
       }
     } catch {
-      // optional
+      // FCM may be unconfigured — ignore so login still works
     }
   };
 
