@@ -1,7 +1,7 @@
 import React, { Component, ReactNode } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../theme';
+import { theme, fonts, palette } from '../theme';
 
 interface Props {
   children: ReactNode;
@@ -23,16 +23,38 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <View className={`flex-1 ${theme.screen} items-center justify-center px-8`}>
-          <Ionicons name="warning-outline" size={48} color="#ef4444" />
-          <Text className={`${theme.title} text-xl font-bold mt-4 text-center`}>
+          <View
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 36,
+              backgroundColor: palette.expense + '18',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="warning-outline" size={36} color={palette.expense} />
+          </View>
+          <Text
+            className={`${theme.title} text-xl mt-4 text-center`}
+            style={{ fontFamily: fonts.bold }}
+          >
             Something went wrong
           </Text>
-          <Text className={`${theme.subtitle} text-sm mt-2 text-center`}>{this.state.message}</Text>
+          <Text
+            className={`${theme.subtitle} text-sm mt-2 text-center`}
+            style={{ fontFamily: fonts.regular }}
+          >
+            {this.state.message}
+          </Text>
           <TouchableOpacity
             onPress={() => this.setState({ hasError: false, message: '' })}
-            className="mt-6 bg-accent px-6 py-3 rounded-xl"
+            className="mt-6 px-6 py-3 rounded-xl"
+            style={{ backgroundColor: palette.primary }}
           >
-            <Text className="text-white font-semibold">Try again</Text>
+            <Text className="text-white" style={{ fontFamily: fonts.semibold }}>
+              Try again
+            </Text>
           </TouchableOpacity>
         </View>
       );

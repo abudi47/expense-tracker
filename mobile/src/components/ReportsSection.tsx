@@ -6,7 +6,7 @@ import { CategoryChip } from './design';
 import { DatePickerField } from './DatePickerField';
 import { api } from '../services/api';
 import { useToast } from './Toast';
-import { theme, palette } from '../theme';
+import { theme, palette, fonts } from '../theme';
 
 export default function ReportsSection() {
   const { showToast } = useToast();
@@ -78,7 +78,9 @@ export default function ReportsSection() {
 
   return (
     <View className="mb-8">
-      <Text className={`${theme.title} text-lg font-semibold mb-3`}>Reports & Export</Text>
+      <Text className={`${theme.title} text-lg mb-3`} style={{ fontFamily: fonts.semibold }}>
+        Reports & Export
+      </Text>
       <Card>
         <View className="flex-row gap-2 mb-4">
           {filters.map((f) => (

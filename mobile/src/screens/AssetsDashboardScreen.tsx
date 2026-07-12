@@ -5,19 +5,23 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
+  Pressable,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { Card, ScreenHeader } from '../components/ui';
+import { ScreenHeader } from '../components/ui';
 import { AccountCard, EmptyState, ErrorState } from '../components/design';
+import { GradientCard, SoftGlow } from '../components/GradientCard';
+import { AnimatedBalance } from '../components/AnimatedBalance';
 import { SkeletonAccountCards, SkeletonCard } from '../components/Skeleton';
 import { api, AccountsSummary } from '../services/api';
 import { formatCurrency } from '../utils/format';
 import { useAuth } from '../context/AuthContext';
-import { theme, typography, palette } from '../theme';
+import { theme, fonts, palette } from '../theme';
 import { RootStackParamList } from '../navigation/types';
+import { haptics } from '../utils/haptics';
 
 export default function AssetsDashboardScreen() {
   const { user } = useAuth();
@@ -81,11 +85,12 @@ export default function AssetsDashboardScreen() {
     >
       <ScreenHeader
         title="Assets"
-        subtitle={`Hello, ${user?.name?.split(' ')[0]}`}
+        subtitle={`Hello, ${user?.name?.split(' ')[0] || 'there'}`}
         right={
           <TouchableOpacity
             onPress={() => navigation.navigate('ManageAccounts')}
-            className="bg-accent/15 p-2.5 rounded-full"
+            className="p-2.5 rounded-full"
+            style={{ backgroundColor: palette.primary + '18' }}
           >
             <Ionicons name="settings-outline" size={22} color={palette.primary} />
           </TouchableOpacity>
@@ -93,23 +98,41 @@ export default function AssetsDashboardScreen() {
       />
 
       <View className="px-5">
-        <View className="flex-row mb-4 bg-slate-200 dark:bg-navy-800 rounded-xl p-1">
+        <View
+          className="flex-row mb-4 rounded-xl p-1"
+          style={{ backgroundColor: palette.primary + '14' }}
+        >
           {(['ETB', 'USD'] as const).map((c) => (
-            <TouchableOpacity
+              <Pressable
               key={c}
-              onPress={() => switchCurrency(c)}
-              className={`flex-1 py-2.5 rounded-lg items-center ${
-                displayCurrency === c ? 'bg-accent' : ''
-              }`}
+              onPress={() => {
+                haptics.selection();
+                switchCurrency(c);
+              }}
+              className="flex-1 py-2.5 rounded-lg items-center"
+              style={
+                displayCurrency === c
+                  ? {
+                      backgroundColor: palette.primary,
+                      shadowColor: palette.primary,
+                      shadowOpacity: 0.35,
+                      shadowRadius: 6,
+                      shadowOffset: { width: 0, height: 2 },
+                      elevation: 3,
+                    }
+                  : undefined
+              }
             >
               <Text
-                className={`font-semibold text-sm ${
-                  displayCurrency === c ? 'text-white' : theme.subtitle
-                }`}
+                style={{
+                  fontFamily: fonts.semibold,
+                  fontSize: 13,
+                  color: displayCurrency === c ? '#fff' : palette.primary,
+                }}
               >
                 View in {c}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           ))}
         </View>
 
@@ -123,43 +146,106 @@ export default function AssetsDashboardScreen() {
         ) : summary ? (
           <>
             <Animated.View entering={FadeInDown.duration(400)}>
-              <Card className="mb-3 bg-accent/10 border-accent/30">
-                <Text className={`${theme.subtitle} text-sm`}>
+              <GradientCard style={{ marginBottom: 16 }}>
+                <SoftGlow />
+                <Text
+                  style={{
+                    fontFamily: fonts.medium,
+                    fontSize: 13,
+                    color: 'rgba(255,255,255,0.8)',
+                  }}
+                >
                   Total Assets ({displayCurrency})
                 </Text>
-                <Text className={`${theme.title} ${typography.display} mt-1`}>
-                  {formatCurrency(summary.totalConverted || 0, displayCurrency)}
-                </Text>
+                <AnimatedBalance
+                  value={summary.totalConverted || 0}
+                  currency={displayCurrency}
+                  style={{ fontSize: 34, lineHeight: 42, color: '#fff', marginTop: 6 }}
+                />
                 {fx ? (
-                  <Text className={`${theme.subtitle} text-xs mt-2`}>
-                    Rates: Crypto/Grey 1 USD = {fx.cryptoUsdToEtb} Br · Bank 1 USD ={' '}
-                    {fx.bankUsdToEtb} Br
+                  <Text
+                    style={{
+                      fontFamily: fonts.regular,
+                      fontSize: 11,
+                      color: 'rgba(255,255,255,0.65)',
+                      marginTop: 10,
+                    }}
+                  >
+                    Crypto/Grey 1 USD = {fx.cryptoUsdToEtb} Br · Bank 1 USD = {fx.bankUsdToEtb} Br
                   </Text>
                 ) : null}
-              </Card>
+                <View className="flex-row mt-4 gap-3">
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('Transfer')}
+                    className="flex-row items-center px-3.5 py-2 rounded-full"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
+                  >
+                    <Ionicons name="swap-horizontal" size={16} color="#fff" />
+                    <Text
+                      style={{
+                        fontFamily: fonts.semibold,
+                        fontSize: 12,
+                        color: '#fff',
+                        marginLeft: 6,
+                      }}
+                    >
+                      Transfer
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('ManageAccounts')}
+                    className="flex-row items-center px-3.5 py-2 rounded-full"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
+                  >
+                    <Ionicons name="add" size={16} color="#fff" />
+                    <Text
+                      style={{
+                        fontFamily: fonts.semibold,
+                        fontSize: 12,
+                        color: '#fff',
+                        marginLeft: 6,
+                      }}
+                    >
+                      Add account
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </GradientCard>
             </Animated.View>
 
             {summary.totalsByCurrency.length > 1 && (
-              <Card className="mb-4">
-                <Text className={`${theme.subtitle} text-xs uppercase font-semibold mb-2`}>
+              <View className={`${theme.card} rounded-2xl p-4 mb-4`}>
+                <Text
+                  className={`${theme.subtitle} text-xs uppercase mb-2`}
+                  style={{ fontFamily: fonts.semibold, letterSpacing: 0.6 }}
+                >
                   By original currency
                 </Text>
                 {summary.totalsByCurrency.map((t) => (
-                  <View key={t.currency} className="flex-row justify-between py-1">
-                    <Text className={theme.subtitle}>{t.currency}</Text>
-                    <Text className={`${theme.title} font-medium`}>
+                  <View key={t.currency} className="flex-row justify-between py-1.5">
+                    <Text className={theme.subtitle} style={{ fontFamily: fonts.medium }}>
+                      {t.currency}
+                    </Text>
+                    <Text
+                      className={theme.title}
+                      style={{ fontFamily: fonts.semibold, fontVariant: ['tabular-nums'] }}
+                    >
                       {formatCurrency(t.total, t.currency)}
                     </Text>
                   </View>
                 ))}
-              </Card>
+              </View>
             )}
 
             <View className="flex-row justify-between items-center mb-3">
-              <Text className={`${theme.title} ${typography.subheading}`}>Your Accounts</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Transfer')}>
-                <Text className="text-accent text-sm font-semibold">Transfer</Text>
-              </TouchableOpacity>
+              <Text className={theme.title} style={{ fontFamily: fonts.semibold, fontSize: 18 }}>
+                Your Accounts
+              </Text>
+              <Text
+                style={{ fontFamily: fonts.medium, fontSize: 12, color: palette.primary }}
+              >
+                {summary.accounts.length} total
+              </Text>
             </View>
 
             <View className="flex-row flex-wrap justify-between">
@@ -189,14 +275,23 @@ export default function AssetsDashboardScreen() {
             )}
 
             {summary.legacyTransactionCount > 0 && (
-              <Card className="mt-4 border-amber-300 dark:border-amber-700">
-                <Text className={`${theme.subtitle} text-xs uppercase font-semibold`}>
+              <View
+                className={`${theme.card} rounded-2xl p-4 mt-4`}
+                style={{ borderColor: palette.warning + '55', borderWidth: 1 }}
+              >
+                <Text
+                  className={`${theme.subtitle} text-xs uppercase`}
+                  style={{ fontFamily: fonts.semibold }}
+                >
                   Legacy Data
                 </Text>
-                <Text className={`${theme.title} text-sm mt-1`}>
+                <Text
+                  className={`${theme.title} text-sm mt-1`}
+                  style={{ fontFamily: fonts.regular }}
+                >
                   {summary.legacyTransactionCount} old transaction(s) not linked to accounts
                 </Text>
-              </Card>
+              </View>
             )}
           </>
         ) : null}

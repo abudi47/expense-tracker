@@ -10,7 +10,8 @@ import {
 import { View, Text, Animated, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../theme/useThemeColors';
-import { palette, theme } from '../theme';
+import { palette, theme, fonts } from '../theme';
+import { haptics } from '../utils/haptics';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -62,7 +63,9 @@ function ToastItem({ toast, onDismiss }: { toast: ToastMessage; onDismiss: () =>
     >
       <View style={{ backgroundColor: config.bg }} className="px-4 py-3 flex-row items-center">
         <Ionicons name={config.icon} size={22} color={config.color} />
-        <Text className={`${theme.title} flex-1 ml-3 text-sm`}>{toast.message}</Text>
+        <Text className={`${theme.title} flex-1 ml-3 text-sm`} style={{ fontFamily: fonts.medium }}>
+          {toast.message}
+        </Text>
         <TouchableOpacity onPress={dismiss} hitSlop={8}>
           <Ionicons name="close" size={18} color={colors.icon} />
         </TouchableOpacity>
@@ -83,6 +86,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const showToast = useCallback(
     (message: string, type: ToastType = 'info', duration = 3000) => {
+      if (type === 'success') haptics.success();
+      else if (type === 'error') haptics.error();
+      else haptics.light();
       const id = Date.now().toString();
       setToasts((prev) => [...prev, { id, type, message, duration }]);
     },

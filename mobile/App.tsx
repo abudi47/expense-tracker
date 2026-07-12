@@ -4,6 +4,13 @@ import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import {
+  useFonts,
+  Poppins_400Regular,
+  Poppins_500Medium,
+  Poppins_600SemiBold,
+  Poppins_700Bold,
+} from '@expo-google-fonts/poppins';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { ToastProvider } from './src/components/Toast';
@@ -15,16 +22,16 @@ import AccountDetailScreen from './src/screens/AccountDetailScreen';
 import ManageAccountsScreen from './src/screens/ManageAccountsScreen';
 import TransferScreen from './src/screens/TransferScreen';
 import { RootStackParamList } from './src/navigation/types';
-import { theme } from './src/theme';
-import { palette } from './src/theme';
+import { theme, palette, fonts } from './src/theme';
 import { useThemeColors } from './src/theme/useThemeColors';
 import './global.css';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const navFont = { fontFamily: fonts.semibold, fontSize: 17 };
+
 function RootNavigator() {
   const { token, loading } = useAuth();
-  const { isDark } = useTheme();
   const colors = useThemeColors();
 
   if (loading) {
@@ -36,7 +43,13 @@ function RootNavigator() {
   }
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+        headerTitleStyle: navFont,
+      }}
+    >
       {token ? (
         <>
           <Stack.Screen name="MainTabs" component={MainNavigator} />
@@ -49,6 +62,7 @@ function RootNavigator() {
               headerTintColor: colors.text,
               headerTitle: '',
               presentation: 'modal',
+              animation: 'fade_from_bottom',
             }}
           />
           <Stack.Screen
@@ -59,6 +73,7 @@ function RootNavigator() {
               headerStyle: { backgroundColor: colors.surface },
               headerTintColor: colors.text,
               headerTitle: '',
+              animation: 'slide_from_right',
             }}
           />
           <Stack.Screen
@@ -80,6 +95,7 @@ function RootNavigator() {
               headerTintColor: colors.text,
               title: 'Transfer',
               presentation: 'modal',
+              animation: 'fade_from_bottom',
             }}
           />
         </>
@@ -93,10 +109,22 @@ function RootNavigator() {
 function AppContent() {
   const { isDark } = useTheme();
 
+  const navTheme = {
+    ...(isDark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDark ? DarkTheme.colors : DefaultTheme.colors),
+      primary: palette.primary,
+      background: isDark ? palette.dark.background : palette.light.background,
+      card: isDark ? palette.dark.surface : palette.light.surface,
+      text: isDark ? palette.dark.text : palette.light.text,
+      border: isDark ? palette.dark.border : palette.light.border,
+    },
+  };
+
   return (
     <AuthProvider>
       <ToastProvider>
-        <NavigationContainer theme={isDark ? DarkTheme : DefaultTheme}>
+        <NavigationContainer theme={navTheme}>
           <RootNavigator />
         </NavigationContainer>
       </ToastProvider>
@@ -105,6 +133,21 @@ function AppContent() {
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+  });
+
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.light.background }}>
+        <ActivityIndicator size="large" color={palette.primary} />
+      </View>
+    );
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>

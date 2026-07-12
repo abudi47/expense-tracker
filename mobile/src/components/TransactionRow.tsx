@@ -4,8 +4,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { Transaction } from '../services/api';
 import { formatCurrency, formatDate } from '../utils/format';
-import { theme } from '../theme';
-import { palette } from '../theme';
+import { theme, fonts, palette } from '../theme';
 import { LegacyBadge } from './design';
 
 interface Props {
@@ -17,6 +16,12 @@ interface Props {
 
 function TransactionRow({ item, accountName, onPress, onDelete }: Props) {
   const isLegacy = !item.accountId;
+  const accent =
+    item.type === 'income'
+      ? palette.income
+      : item.type === 'transfer'
+        ? palette.transfer
+        : palette.expense;
 
   const renderRight = () => (
     <TouchableOpacity
@@ -36,18 +41,19 @@ function TransactionRow({ item, accountName, onPress, onDelete }: Props) {
     <Swipeable renderRightActions={renderRight} overshootRight={false}>
       <TouchableOpacity
         onPress={onPress}
-        className={`${theme.card} rounded-xl p-4 mb-3 flex-row items-center`}
+        activeOpacity={0.85}
+        className={`${theme.card} rounded-2xl p-4 mb-3 flex-row items-center`}
+        style={{
+          shadowColor: '#1E1B4B',
+          shadowOpacity: 0.06,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 2,
+        }}
       >
         <View
-          className="w-10 h-10 rounded-full items-center justify-center"
-          style={{
-            backgroundColor:
-              item.type === 'income'
-                ? palette.income + '22'
-                : item.type === 'transfer'
-                  ? palette.transfer + '22'
-                  : palette.expense + '22',
-          }}
+          className="w-11 h-11 rounded-2xl items-center justify-center"
+          style={{ backgroundColor: accent + '18' }}
         >
           <Ionicons
             name={
@@ -58,30 +64,32 @@ function TransactionRow({ item, accountName, onPress, onDelete }: Props) {
                   : 'arrow-up'
             }
             size={20}
-            color={
-              item.type === 'income'
-                ? palette.income
-                : item.type === 'transfer'
-                  ? palette.transfer
-                  : palette.expense
-            }
+            color={accent}
           />
         </View>
         <View className="flex-1 ml-3">
           <View className="flex-row items-center gap-2">
-            <Text className={`${theme.title} font-medium`}>
+            <Text className={theme.title} style={{ fontFamily: fonts.medium, fontSize: 15 }}>
               {item.type === 'income' ? item.source || item.category : item.category || 'Transfer'}
             </Text>
             {isLegacy && <LegacyBadge />}
           </View>
-          <Text className={`${theme.subtitle} text-xs mt-0.5`}>
+          <Text
+            className={`${theme.subtitle} text-xs mt-0.5`}
+            style={{ fontFamily: fonts.regular }}
+          >
             {formatDate(item.date)}
             {accountName ? ` · ${accountName}` : ''}
             {item.isRecurring ? ' · Recurring' : ''}
           </Text>
         </View>
         <Text
-          className={`font-bold ${item.type === 'income' ? 'text-green-500' : item.type === 'transfer' ? 'text-purple-500' : 'text-red-500'}`}
+          style={{
+            fontFamily: fonts.bold,
+            fontSize: 15,
+            fontVariant: ['tabular-nums'],
+            color: accent,
+          }}
         >
           {item.type === 'income' ? '+' : item.type === 'expense' ? '-' : ''}
           {formatCurrency(item.amount)}

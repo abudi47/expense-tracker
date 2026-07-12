@@ -8,7 +8,7 @@ import {
   Pressable,
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { theme } from '../theme';
+import { theme, fonts } from '../theme';
 import { useThemeColors } from '../theme/useThemeColors';
 
 interface InputProps extends TextInputProps {
@@ -21,14 +21,27 @@ export function Input({ label, error, className, ...props }: InputProps) {
   return (
     <View className="mb-4">
       {label && (
-        <Text className={`${theme.label} text-sm mb-1.5 font-medium`}>{label}</Text>
+        <Text
+          className={`${theme.label} text-sm mb-1.5`}
+          style={{ fontFamily: fonts.medium }}
+        >
+          {label}
+        </Text>
       )}
       <TextInput
         className={`${theme.input} rounded-xl px-4 py-3.5 text-base ${error ? 'border-red-500' : ''} ${className || ''}`}
+        style={{ fontFamily: fonts.regular }}
         placeholderTextColor={colors.textMuted}
         {...props}
       />
-      {error && <Text className="text-red-500 dark:text-red-400 text-xs mt-1">{error}</Text>}
+      {error && (
+        <Text
+          className="text-red-500 dark:text-red-400 text-xs mt-1"
+          style={{ fontFamily: fonts.regular }}
+        >
+          {error}
+        </Text>
+      )}
     </View>
   );
 }
@@ -90,7 +103,12 @@ export function Button({
       ) : (
         <>
           {icon}
-          <Text className={`${textVariants[variant]} font-semibold text-base`}>{title}</Text>
+          <Text
+            className={`${textVariants[variant]} text-base`}
+            style={{ fontFamily: 'Poppins_600SemiBold' }}
+          >
+            {title}
+          </Text>
         </>
       )}
     </AnimatedPressable>
@@ -129,9 +147,13 @@ export function SettingRow({ icon, title, subtitle, onPress, right }: SettingRow
     >
       {icon}
       <View className="ml-3 flex-1">
-        <Text className={`${theme.title} text-base`}>{title}</Text>
+        <Text className={`${theme.title} text-base`} style={{ fontFamily: fonts.medium }}>
+          {title}
+        </Text>
         {subtitle ? (
-          <Text className={`${theme.subtitle} text-xs mt-0.5`}>{subtitle}</Text>
+          <Text className={`${theme.subtitle} text-xs mt-0.5`} style={{ fontFamily: fonts.regular }}>
+            {subtitle}
+          </Text>
         ) : null}
       </View>
       {right}
@@ -149,8 +171,18 @@ export function ScreenHeader({ title, subtitle, right }: ScreenHeaderProps) {
   return (
     <View className="px-5 pt-14 pb-4 flex-row items-end justify-between">
       <View className="flex-1">
-        {subtitle ? <Text className={`${theme.subtitle} text-sm`}>{subtitle}</Text> : null}
-        <Text className={`${theme.title} text-2xl font-bold ${subtitle ? 'mt-1' : ''}`}>
+        {subtitle ? (
+          <Text
+            className={`${theme.subtitle} text-sm`}
+            style={{ fontFamily: 'Poppins_400Regular' }}
+          >
+            {subtitle}
+          </Text>
+        ) : null}
+        <Text
+          className={`${theme.title} text-2xl ${subtitle ? 'mt-1' : ''}`}
+          style={{ fontFamily: 'Poppins_700Bold' }}
+        >
           {title}
         </Text>
       </View>

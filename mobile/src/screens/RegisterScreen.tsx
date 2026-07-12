@@ -6,9 +6,9 @@ import { Input, Button } from '../components/ui';
 import { KeyboardFormScreen } from '../components/KeyboardFormScreen';
 import { useAuth } from '../context/AuthContext';
 import { AuthStackParamList } from '../navigation/types';
-import { theme } from '../theme';
-import { palette } from '../theme';
+import { theme, fonts, palette } from '../theme';
 import { useThemeColors } from '../theme/useThemeColors';
+import { haptics } from '../utils/haptics';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>;
 
@@ -35,7 +35,9 @@ export default function RegisterScreen({ navigation }: Props) {
     setError('');
     try {
       await register(name.trim(), email.trim(), password);
+      haptics.success();
     } catch (err) {
+      haptics.error();
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setLoading(false);
@@ -46,17 +48,25 @@ export default function RegisterScreen({ navigation }: Props) {
     <KeyboardFormScreen contentContainerClassName="flex-grow justify-center px-6 py-12">
       <TouchableOpacity onPress={() => navigation.goBack()} className="mb-6 flex-row items-center">
         <Ionicons name="arrow-back" size={22} color={palette.primary} />
-        <Text className="text-accent ml-2 font-medium">Back to sign in</Text>
+        <Text style={{ fontFamily: fonts.medium, color: palette.primary, marginLeft: 8 }}>
+          Back to sign in
+        </Text>
       </TouchableOpacity>
 
       <View className="mb-8">
-        <Text className={`${theme.title} text-3xl font-bold`}>Create account</Text>
-        <Text className={`${theme.subtitle} text-base mt-2`}>Set up your account in under a minute</Text>
+        <Text className={theme.title} style={{ fontFamily: fonts.bold, fontSize: 30 }}>
+          Create account
+        </Text>
+        <Text className={`${theme.subtitle} mt-2`} style={{ fontFamily: fonts.regular, fontSize: 15 }}>
+          Set up your account in under a minute
+        </Text>
       </View>
 
       {error ? (
         <View className="bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-xl p-3 mb-4">
-          <Text className="text-red-700 dark:text-red-300 text-sm">{error}</Text>
+          <Text className="text-red-700 dark:text-red-300 text-sm" style={{ fontFamily: fonts.regular }}>
+            {error}
+          </Text>
         </View>
       ) : null}
 
@@ -72,8 +82,9 @@ export default function RegisterScreen({ navigation }: Props) {
       <Button title="Create Account" onPress={handleRegister} loading={loading} />
 
       <TouchableOpacity onPress={() => navigation.navigate('Login')} className="mt-6 items-center py-2">
-        <Text className={theme.subtitle}>
-          Already have an account? <Text className="text-accent font-semibold">Sign in</Text>
+        <Text className={theme.subtitle} style={{ fontFamily: fonts.regular }}>
+          Already have an account?{' '}
+          <Text style={{ fontFamily: fonts.semibold, color: palette.primary }}>Sign in</Text>
         </Text>
       </TouchableOpacity>
     </KeyboardFormScreen>

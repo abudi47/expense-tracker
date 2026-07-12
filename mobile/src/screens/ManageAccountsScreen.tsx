@@ -29,7 +29,7 @@ export default function ManageAccountsScreen() {
   const [editing, setEditing] = useState<Account | null>(null);
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('wallet');
-  const [color, setColor] = useState(palette.primary);
+  const [color, setColor] = useState<string>(palette.primary);
   const [currency, setCurrency] = useState('ETB');
   const [fxGroup, setFxGroup] = useState<FxGroup>('local');
   const [openingBalance, setOpeningBalance] = useState('');
@@ -124,7 +124,15 @@ export default function ManageAccountsScreen() {
         <Text className={`${theme.subtitle} text-sm`}>Your wallets & banks</Text>
         <TouchableOpacity
           onPress={() => openModal()}
-          className="bg-accent rounded-full w-10 h-10 items-center justify-center"
+          className="rounded-full w-10 h-10 items-center justify-center"
+          style={{
+            backgroundColor: palette.primary,
+            shadowColor: palette.primary,
+            shadowOpacity: 0.4,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 3 },
+            elevation: 4,
+          }}
         >
           <Ionicons name="add" size={24} color="#fff" />
         </TouchableOpacity>

@@ -7,8 +7,9 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../components/Toast';
 import { api, FxSettings } from '../services/api';
-import { palette, theme, ThemeMode } from '../theme';
+import { palette, theme, ThemeMode, fonts } from '../theme';
 import { useThemeColors } from '../theme/useThemeColors';
+import { haptics } from '../utils/haptics';
 
 export default function SettingsScreen() {
   const { user, logout, biometricAvailable, biometricLabel, biometricEnabled, enableBiometric, disableBiometric } =
@@ -51,11 +52,14 @@ export default function SettingsScreen() {
     try {
       if (value) {
         await enableBiometric();
+        haptics.success();
         Alert.alert('Enabled', `${biometricLabel} login is now active.`);
       } else {
         await disableBiometric();
+        haptics.light();
       }
     } catch (err) {
+      haptics.error();
       Alert.alert(
         'Could not update',
         err instanceof Error ? err.message : 'Something went wrong'
@@ -68,6 +72,7 @@ export default function SettingsScreen() {
   const cycleTheme = async () => {
     const order: ThemeMode[] = ['light', 'dark', 'system'];
     const next = order[(order.indexOf(mode) + 1) % order.length];
+    haptics.selection();
     await setMode(next);
   };
 
@@ -104,18 +109,25 @@ export default function SettingsScreen() {
         <Card className="mb-4">
           <View className="flex-row items-center">
             <View className="w-14 h-14 rounded-full bg-accent items-center justify-center">
-              <Text className="text-white text-xl font-bold">
+              <Text className="text-white text-xl" style={{ fontFamily: fonts.bold }}>
                 {user?.name?.charAt(0).toUpperCase()}
               </Text>
             </View>
             <View className="ml-4 flex-1">
-              <Text className={`${theme.title} text-lg font-semibold`}>{user?.name}</Text>
-              <Text className={`${theme.subtitle} text-sm`}>{user?.email}</Text>
+              <Text className={`${theme.title} text-lg`} style={{ fontFamily: fonts.semibold }}>
+                {user?.name}
+              </Text>
+              <Text className={`${theme.subtitle} text-sm`} style={{ fontFamily: fonts.regular }}>
+                {user?.email}
+              </Text>
             </View>
           </View>
         </Card>
 
-        <Text className={`${theme.subtitle} text-xs font-semibold uppercase mb-2 ml-1`}>
+        <Text
+          className={`${theme.subtitle} text-xs uppercase mb-2 ml-1`}
+          style={{ fontFamily: fonts.semibold, letterSpacing: 0.6 }}
+        >
           Currency conversion
         </Text>
         <Card className="mb-4">
@@ -147,7 +159,10 @@ export default function SettingsScreen() {
           <Button title="Save rates" onPress={saveFxRates} loading={fxSaving} />
         </Card>
 
-        <Text className={`${theme.subtitle} text-xs font-semibold uppercase mb-2 ml-1`}>
+        <Text
+          className={`${theme.subtitle} text-xs uppercase mb-2 ml-1`}
+          style={{ fontFamily: fonts.semibold, letterSpacing: 0.6 }}
+        >
           Appearance
         </Text>
         <Card className="mb-4">
@@ -160,7 +175,10 @@ export default function SettingsScreen() {
           />
         </Card>
 
-        <Text className={`${theme.subtitle} text-xs font-semibold uppercase mb-2 ml-1`}>
+        <Text
+          className={`${theme.subtitle} text-xs uppercase mb-2 ml-1`}
+          style={{ fontFamily: fonts.semibold, letterSpacing: 0.6 }}
+        >
           Security
         </Text>
         <Card className="mb-4">
@@ -191,7 +209,10 @@ export default function SettingsScreen() {
           )}
         </Card>
 
-        <Text className={`${theme.subtitle} text-xs font-semibold uppercase mb-2 ml-1`}>
+        <Text
+          className={`${theme.subtitle} text-xs uppercase mb-2 ml-1`}
+          style={{ fontFamily: fonts.semibold, letterSpacing: 0.6 }}
+        >
           About
         </Text>
         <Card className="mb-6">

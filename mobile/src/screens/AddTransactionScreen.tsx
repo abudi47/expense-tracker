@@ -15,9 +15,9 @@ import { api, Category, Transaction, Account, ApiError } from '../services/api';
 import { toInputDate, formatCurrency } from '../utils/format';
 import { useToast } from '../components/Toast';
 import { RootStackParamList } from '../navigation/types';
-import { theme } from '../theme';
+import { theme, fonts, palette } from '../theme';
 import { useThemeColors } from '../theme/useThemeColors';
-import { palette } from '../theme';
+import { haptics } from '../utils/haptics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddTransaction'>;
 
@@ -105,6 +105,7 @@ export default function AddTransactionScreen({ navigation, route }: Props) {
       navigation.goBack();
     } catch (err) {
       if (err instanceof ApiError && err.code === 'OVERDRAFT') {
+        haptics.warning();
         const projected = err.data?.projectedBalance as number;
         const accountName = (err.data?.accountName as string) || 'this account';
         Alert.alert(
@@ -116,6 +117,7 @@ export default function AddTransactionScreen({ navigation, route }: Props) {
           ]
         );
       } else {
+        haptics.error();
         setError(err instanceof Error ? err.message : 'Failed to save');
       }
     } finally {
@@ -143,18 +145,32 @@ export default function AddTransactionScreen({ navigation, route }: Props) {
 
   return (
     <KeyboardFormScreen>
-      <Text className={`${theme.title} text-2xl font-bold mb-6`}>
+      <Text className={`${theme.title} text-2xl mb-6`} style={{ fontFamily: fonts.bold }}>
         {isEdit ? 'Edit Transaction' : 'Add Transaction'}
       </Text>
 
-      <View className={`flex-row mb-6 ${theme.surface} rounded-xl p-1 border ${theme.card.split(' ').find(c => c.startsWith('border')) || 'border-slate-200'}`}>
+      <View
+        className="flex-row mb-6 rounded-xl p-1"
+        style={{ backgroundColor: palette.primary + '14' }}
+      >
         {(['expense', 'income'] as const).map((t) => (
           <TouchableOpacity
             key={t}
-            onPress={() => { setType(t); setCategory(''); }}
-            className={`flex-1 py-3 rounded-lg items-center ${type === t ? 'bg-accent' : ''}`}
+            onPress={() => {
+              haptics.selection();
+              setType(t);
+              setCategory('');
+            }}
+            className="flex-1 py-3 rounded-lg items-center"
+            style={type === t ? { backgroundColor: palette.primary } : undefined}
           >
-            <Text className={`font-semibold capitalize ${type === t ? 'text-white' : theme.subtitle}`}>
+            <Text
+              style={{
+                fontFamily: fonts.semibold,
+                textTransform: 'capitalize',
+                color: type === t ? '#fff' : palette.primary,
+              }}
+            >
               {t}
             </Text>
           </TouchableOpacity>

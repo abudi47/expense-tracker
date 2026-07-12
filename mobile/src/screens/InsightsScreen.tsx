@@ -5,30 +5,41 @@ import {
   ScrollView,
   RefreshControl,
   Dimensions,
-  TouchableOpacity,
+  Pressable,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { PieChart, LineChart, BarChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { Card, ScreenHeader } from '../components/ui';
 import { EmptyState, ErrorState } from '../components/design';
+import { GradientCard, SoftGlow } from '../components/GradientCard';
+import { AnimatedBalance } from '../components/AnimatedBalance';
 import { SkeletonCard } from '../components/Skeleton';
 import BudgetsSection from '../components/BudgetsSection';
 import ReportsSection from '../components/ReportsSection';
 import { api, DashboardSummary } from '../services/api';
 import { formatCurrency, percentChange } from '../utils/format';
 import { RootStackParamList } from '../navigation/types';
-import { theme, typography, palette } from '../theme';
+import { theme, fonts, palette } from '../theme';
 import { useChartConfig, PIE_COLORS, useThemeColors } from '../theme/useThemeColors';
+import { haptics } from '../utils/haptics';
 
 const screenWidth = Dimensions.get('window').width;
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function InsightsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
   const chartConfig = useChartConfig();
+  const fabScale = useSharedValue(1);
+  const fabStyle = useAnimatedStyle(() => ({ transform: [{ scale: fabScale.value }] }));
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -96,32 +107,62 @@ export default function InsightsScreen() {
         ) : summary ? (
           <View className="px-5">
             <Animated.View entering={FadeInDown.duration(400)}>
-              <Card className="mb-4 bg-accent/10 border-accent/30">
-                <Text className={`${theme.subtitle} text-sm`}>Net Flow (Accounts)</Text>
-                <Text className={`${theme.title} ${typography.display} mt-1`}>
-                  {formatCurrency(summary.balance)}
+              <GradientCard style={{ marginBottom: 16 }}>
+                <SoftGlow />
+                <Text style={{ fontFamily: fonts.medium, fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>
+                  Net Flow (Accounts)
                 </Text>
-                <View className="flex-row mt-3 gap-4">
+                <AnimatedBalance
+                  value={summary.balance}
+                  style={{ fontSize: 32, lineHeight: 40, color: '#fff', marginTop: 6 }}
+                />
+                <View className="flex-row mt-4 gap-6">
                   <View>
-                    <Text className="text-green-500 text-xs">Income</Text>
-                    <Text className={`${theme.title} font-semibold`}>
+                    <Text style={{ fontFamily: fonts.medium, fontSize: 11, color: '#6EE7B7' }}>
+                      Income
+                    </Text>
+                    <Text
+                      style={{
+                        fontFamily: fonts.semibold,
+                        fontSize: 15,
+                        color: '#fff',
+                        fontVariant: ['tabular-nums'],
+                      }}
+                    >
                       {formatCurrency(summary.totalIncome)}
                     </Text>
                   </View>
                   <View>
-                    <Text className="text-red-500 text-xs">Expenses</Text>
-                    <Text className={`${theme.title} font-semibold`}>
+                    <Text style={{ fontFamily: fonts.medium, fontSize: 11, color: '#FCA5A5' }}>
+                      Expenses
+                    </Text>
+                    <Text
+                      style={{
+                        fontFamily: fonts.semibold,
+                        fontSize: 15,
+                        color: '#fff',
+                        fontVariant: ['tabular-nums'],
+                      }}
+                    >
                       {formatCurrency(summary.totalExpenses)}
                     </Text>
                   </View>
                 </View>
-              </Card>
+              </GradientCard>
             </Animated.View>
 
             {(summary.legacy?.income > 0 || summary.legacy?.expenses > 0) && (
-              <Card className="mb-4 border-amber-300 dark:border-amber-700">
-                <Text className={`${theme.subtitle} text-xs font-semibold uppercase`}>Legacy Balance</Text>
-                <Text className={`${theme.title} text-lg font-bold mt-1`}>
+              <Card className="mb-4" style={{ borderColor: palette.warning + '55', borderWidth: 1 }}>
+                <Text
+                  className={`${theme.subtitle} text-xs uppercase`}
+                  style={{ fontFamily: fonts.semibold }}
+                >
+                  Legacy Balance
+                </Text>
+                <Text
+                  className={`${theme.title} text-lg mt-1`}
+                  style={{ fontFamily: fonts.bold, fontVariant: ['tabular-nums'] }}
+                >
                   {formatCurrency(summary.legacy.balance)}
                 </Text>
               </Card>
@@ -129,36 +170,64 @@ export default function InsightsScreen() {
 
             <View className="flex-row gap-3 mb-4">
               <Card className="flex-1">
-                <Text className={`${theme.subtitle} text-xs`}>This Month</Text>
-                <Text className={`${theme.title} text-lg font-bold mt-1`}>
+                <Text className={`${theme.subtitle} text-xs`} style={{ fontFamily: fonts.medium }}>
+                  This Month
+                </Text>
+                <Text
+                  className={`${theme.title} text-lg mt-1`}
+                  style={{ fontFamily: fonts.bold, fontVariant: ['tabular-nums'] }}
+                >
                   {formatCurrency(summary.thisMonth.net)}
                 </Text>
               </Card>
               <Card className="flex-1">
-                <Text className={`${theme.subtitle} text-xs`}>vs Last Month</Text>
+                <Text className={`${theme.subtitle} text-xs`} style={{ fontFamily: fonts.medium }}>
+                  vs Last Month
+                </Text>
                 <Text
-                  className={`text-lg font-bold mt-1 ${expenseChange <= 0 ? 'text-green-500' : 'text-red-500'}`}
+                  style={{
+                    fontFamily: fonts.bold,
+                    fontSize: 18,
+                    marginTop: 4,
+                    color: expenseChange <= 0 ? palette.income : palette.expense,
+                  }}
                 >
-                  {expenseChange > 0 ? '+' : ''}{expenseChange}% expenses
+                  {expenseChange > 0 ? '+' : ''}
+                  {expenseChange}% expenses
                 </Text>
               </Card>
             </View>
 
             {summary.budgetAlerts.length > 0 && (
-              <Card className="mb-4 border-yellow-500/40">
+              <Card className="mb-4" style={{ borderColor: palette.warning + '66', borderWidth: 1 }}>
                 <View className="flex-row items-center mb-2">
                   <Ionicons name="warning" size={18} color={palette.warning} />
-                  <Text className="text-yellow-500 font-semibold ml-2">Budget Alerts</Text>
+                  <Text
+                    style={{
+                      fontFamily: fonts.semibold,
+                      marginLeft: 8,
+                      color: palette.warning,
+                    }}
+                  >
+                    Budget Alerts
+                  </Text>
                 </View>
                 {summary.budgetAlerts.map((alert) => (
                   <View key={alert.category} className={`py-2 border-t ${theme.divider}`}>
                     <View className="flex-row justify-between">
-                      <Text className={theme.title}>{alert.category}</Text>
-                      <Text className={alert.status === 'over' ? 'text-red-500' : 'text-yellow-500'}>
+                      <Text className={theme.title} style={{ fontFamily: fonts.medium }}>
+                        {alert.category}
+                      </Text>
+                      <Text
+                        style={{
+                          fontFamily: fonts.semibold,
+                          color: alert.status === 'over' ? palette.expense : palette.warning,
+                        }}
+                      >
                         {alert.percentage}%
                       </Text>
                     </View>
-                    <Text className={`${theme.subtitle} text-xs mt-0.5`}>
+                    <Text className={`${theme.subtitle} text-xs mt-0.5`} style={{ fontFamily: fonts.regular }}>
                       {formatCurrency(alert.spent)} of {formatCurrency(alert.monthlyLimit)}
                     </Text>
                   </View>
@@ -167,26 +236,35 @@ export default function InsightsScreen() {
             )}
 
             {pieData.length > 0 ? (
-              <Card className="mb-4 items-center">
-                <Text className={`${theme.title} font-semibold self-start mb-2`}>By Category</Text>
-                <PieChart
-                  data={pieData}
-                  width={screenWidth - 72}
-                  height={180}
-                  chartConfig={chartConfig}
-                  accessor="amount"
-                  backgroundColor="transparent"
-                  paddingLeft="12"
-                  absolute
-                />
-              </Card>
+              <Animated.View entering={FadeInDown.delay(100).duration(400)}>
+                <Card className="mb-4 items-center">
+                  <Text
+                    className={`${theme.title} self-start mb-2`}
+                    style={{ fontFamily: fonts.semibold }}
+                  >
+                    By Category
+                  </Text>
+                  <PieChart
+                    data={pieData}
+                    width={screenWidth - 72}
+                    height={180}
+                    chartConfig={chartConfig}
+                    accessor="amount"
+                    backgroundColor="transparent"
+                    paddingLeft="12"
+                    absolute
+                  />
+                </Card>
+              </Animated.View>
             ) : (
-              <EmptyState icon="pie-chart-outline" title="No spending data yet" />
+              <EmptyState icon="pie-chart-outline" title="No spending data yet" subtitle="Add expenses to see your breakdown" />
             )}
 
             {trendLabels.length > 0 && (
               <Card className="mb-4">
-                <Text className={`${theme.title} font-semibold mb-2`}>6-Month Trend</Text>
+                <Text className={theme.title} style={{ fontFamily: fonts.semibold, marginBottom: 8 }}>
+                  6-Month Trend
+                </Text>
                 <LineChart
                   data={{
                     labels: trendLabels,
@@ -207,7 +285,9 @@ export default function InsightsScreen() {
 
             {summary.spendingByCategory.length > 0 && (
               <Card className="mb-4">
-                <Text className={`${theme.title} font-semibold mb-2`}>Top Categories</Text>
+                <Text className={theme.title} style={{ fontFamily: fonts.semibold, marginBottom: 8 }}>
+                  Top Categories
+                </Text>
                 <BarChart
                   data={{
                     labels: summary.spendingByCategory.slice(0, 5).map((c) =>
@@ -218,7 +298,7 @@ export default function InsightsScreen() {
                   width={screenWidth - 72}
                   height={200}
                   chartConfig={chartConfig}
-                  yAxisLabel="$"
+                  yAxisLabel=""
                   yAxisSuffix=""
                   style={{ borderRadius: 12 }}
                 />
@@ -231,13 +311,39 @@ export default function InsightsScreen() {
         ) : null}
       </ScrollView>
 
-      <TouchableOpacity
-        onPress={() => navigation.navigate('AddTransaction', {})}
-        className="absolute bottom-6 right-5 w-14 h-14 rounded-full bg-accent items-center justify-center shadow-lg"
-        activeOpacity={0.85}
+      <AnimatedPressable
+        onPress={() => {
+          haptics.light();
+          navigation.navigate('AddTransaction', {});
+        }}
+        onPressIn={() => {
+          fabScale.value = withSpring(0.9);
+        }}
+        onPressOut={() => {
+          fabScale.value = withSpring(1);
+        }}
+        style={[
+          fabStyle,
+          {
+            position: 'absolute',
+            bottom: 24,
+            right: 20,
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: palette.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: palette.primary,
+            shadowOpacity: 0.45,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 6,
+          },
+        ]}
       >
         <Ionicons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
+      </AnimatedPressable>
     </View>
   );
 }

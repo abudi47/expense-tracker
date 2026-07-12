@@ -7,9 +7,10 @@ import { KeyboardFormScreen } from '../components/KeyboardFormScreen';
 import { CategoryChip } from '../components/design';
 import { api, Account, ApiError } from '../services/api';
 import { useToast } from '../components/Toast';
-import { theme } from '../theme';
+import { theme, fonts } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 import { formatCurrency } from '../utils/format';
+import { haptics } from '../utils/haptics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Transfer'>;
 
@@ -57,6 +58,7 @@ export default function TransferScreen({ navigation }: Props) {
       navigation.goBack();
     } catch (err) {
       if (err instanceof ApiError && err.code === 'OVERDRAFT') {
+        haptics.warning();
         const projected = err.data?.projectedBalance as number;
         Alert.alert(
           'Insufficient Funds',
@@ -67,6 +69,7 @@ export default function TransferScreen({ navigation }: Props) {
           ]
         );
       } else {
+        haptics.error();
         setError(err instanceof Error ? err.message : 'Transfer failed');
       }
     } finally {
@@ -78,7 +81,9 @@ export default function TransferScreen({ navigation }: Props) {
 
   return (
     <KeyboardFormScreen>
-      <Text className={`${theme.title} text-2xl font-bold mb-6`}>Transfer</Text>
+      <Text className={`${theme.title} text-2xl mb-6`} style={{ fontFamily: fonts.bold }}>
+        Transfer
+      </Text>
 
       {error ? (
         <View className="bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-xl p-3 mb-4">

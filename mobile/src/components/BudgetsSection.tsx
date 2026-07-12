@@ -14,7 +14,7 @@ import { CategoryChip } from './design';
 import { api, Budget, Category } from '../services/api';
 import { formatCurrency } from '../utils/format';
 import { useToast } from './Toast';
-import { theme, palette } from '../theme';
+import { theme, palette, fonts } from '../theme';
 import { useThemeColors } from '../theme/useThemeColors';
 
 export default function BudgetsSection() {
@@ -88,7 +88,9 @@ export default function BudgetsSection() {
   return (
     <View className="mb-6">
       <View className="flex-row justify-between items-center mb-3">
-        <Text className={`${theme.title} text-lg font-semibold`}>Budgets</Text>
+        <Text className={`${theme.title} text-lg`} style={{ fontFamily: fonts.semibold }}>
+          Budgets
+        </Text>
         <TouchableOpacity onPress={() => openModal()}>
           <Ionicons name="add-circle-outline" size={26} color={palette.primary} />
         </TouchableOpacity>
@@ -96,7 +98,20 @@ export default function BudgetsSection() {
 
       {budgets.length === 0 ? (
         <Card>
-          <Text className={`${theme.subtitle} text-sm`}>No budgets set. Tap + to add one.</Text>
+          <View className="items-center py-4">
+            <View
+              className="w-12 h-12 rounded-full items-center justify-center mb-2"
+              style={{ backgroundColor: palette.primary + '18' }}
+            >
+              <Ionicons name="pie-chart-outline" size={24} color={palette.primary} />
+            </View>
+            <Text
+              className={theme.subtitle}
+              style={{ fontFamily: fonts.regular, fontSize: 13, textAlign: 'center' }}
+            >
+              No budgets set. Tap + to add one.
+            </Text>
+          </View>
         </Card>
       ) : (
         budgets.map((item) => {
