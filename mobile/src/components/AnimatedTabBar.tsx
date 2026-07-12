@@ -42,8 +42,8 @@ export function AnimatedTabBar({ state, descriptors, navigation }: BottomTabBarP
   };
 
   const indicatorStyle = useAnimatedStyle(() => ({
-    width: Math.max(tabWidth.value - 24, 0),
-    transform: [{ translateX: translateX.value + 12 }],
+    width: Math.max(tabWidth.value - 16, 0),
+    transform: [{ translateX: translateX.value + 8 }],
   }));
 
   return (
@@ -54,7 +54,7 @@ export function AnimatedTabBar({ state, descriptors, navigation }: BottomTabBarP
         {
           backgroundColor: colors.bg,
           borderTopColor: colors.border,
-          paddingBottom: Math.max(insets.bottom, 6),
+          paddingBottom: Math.max(insets.bottom, 8),
         },
       ]}
     >
@@ -98,7 +98,7 @@ export function AnimatedTabBar({ state, descriptors, navigation }: BottomTabBarP
                 fontFamily: focused ? fonts.semibold : fonts.medium,
                 fontSize: 11,
                 color,
-                marginTop: 3,
+                marginTop: 2,
               }}
             >
               {label}
@@ -114,21 +114,21 @@ const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
     borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: 8,
-    minHeight: 60,
+    paddingTop: 6,
+    minHeight: 68,
     position: 'relative',
   },
   indicator: {
     position: 'absolute',
-    top: 6,
-    height: 40,
-    borderRadius: 14,
+    top: 4,
+    height: 56,
+    borderRadius: 16,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
-    paddingVertical: 4,
+    paddingVertical: 6,
   },
 });

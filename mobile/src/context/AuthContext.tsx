@@ -70,6 +70,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setToken(storedToken);
           setUser(storedUser);
           api.setToken(storedToken);
+          try {
+            const prefs = await api.get<{ pushAlertsEnabled?: boolean }>('/settings/preferences');
+            if (prefs.pushAlertsEnabled) {
+              const { registerForPushNotifications } = await import('../services/pushNotifications');
+              await registerForPushNotifications();
+            }
+          } catch {
+            // optional
+          }
         }
       }
     } catch {
@@ -88,6 +97,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setHasStoredSession(true);
     const bioEnabled = await isBiometricEnabledForEmail(newUser.email);
     setBiometricEnabled(bioEnabled);
+    // Re-register push token when session is active and user opted in
+    try {
+      const prefs = await api.get<{ pushAlertsEnabled?: boolean }>('/settings/preferences');
+      if (prefs.pushAlertsEnabled) {
+        const { registerForPushNotifications } = await import('../services/pushNotifications');
+        await registerForPushNotifications();
+      }
+    } catch {
+      // optional
+    }
   };
 
   const restoreStoredSession = async () => {
@@ -99,6 +118,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(storedToken);
     setUser(JSON.parse(storedUser));
     api.setToken(storedToken);
+    try {
+      const prefs = await api.get<{ pushAlertsEnabled?: boolean }>('/settings/preferences');
+      if (prefs.pushAlertsEnabled) {
+        const { registerForPushNotifications } = await import('../services/pushNotifications');
+        await registerForPushNotifications();
+      }
+    } catch {
+      // optional
+    }
   };
 
   const login = async (email: string, password: string) => {

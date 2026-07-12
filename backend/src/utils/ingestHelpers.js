@@ -21,16 +21,23 @@ function suggestAccount(accounts, hint = '', currency = 'ETB') {
 }
 
 async function upsertDetectedFromParsed(userId, parsed) {
-  if (!parsed?.amount || !parsed.direction) return null;
+  if (!parsed?.amount || !parsed.direction) {
+    return { item: null, outcome: 'parse_failed' };
+  }
 
-  const externalRef = parsed.rawReference || `${parsed.source}-${parsed.amount}-${parsed.date?.getTime?.() || Date.now()}`;
+  const externalRef =
+    parsed.rawReference ||
+    `${parsed.source}-${parsed.amount}-${parsed.date?.getTime?.() || Date.now()}`;
 
   const existing = await DetectedItem.findOne({ userId, externalRef });
   if (existing) {
-    if (['dismissed', 'approved', 'duplicate'].includes(existing.status)) {
-      return existing;
+    if (existing.status === 'needs_review') {
+      return { item: existing, outcome: 'already_queued' };
     }
-    return existing;
+    if (existing.status === 'duplicate') {
+      return { item: existing, outcome: 'duplicate' };
+    }
+    return { item: existing, outcome: existing.status }; // approved | dismissed
   }
 
   const accounts = await Account.find({ userId, isArchived: false });
@@ -61,7 +68,10 @@ async function upsertDetectedFromParsed(userId, parsed) {
     status: dupTx ? 'duplicate' : 'needs_review',
   });
 
-  return item;
+  return {
+    item,
+    outcome: dupTx ? 'duplicate' : 'created',
+  };
 }
 
 async function approveDetectedItem(userId, item, { accountId, category, note, allowOverdraft, force } = {}) {

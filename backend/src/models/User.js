@@ -48,6 +48,8 @@ const userSchema = new mongoose.Schema(
         default: ['binance.com', 'grey.co', 'greymarket.com'],
       },
     },
+    pushTokens: { type: [String], default: [] },
+    pushAlertsEnabled: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
@@ -76,6 +78,13 @@ userSchema.methods.getIngestSettings = function () {
     androidNotifications: !!this.ingest?.androidNotifications,
     gmailEmail: this.ingest?.gmailTokens?.email || null,
     senderAllowlist: this.ingest?.senderAllowlist || [],
+  };
+};
+
+userSchema.methods.getNotificationPrefs = function () {
+  return {
+    pushAlertsEnabled: !!this.pushAlertsEnabled,
+    hasPushToken: Array.isArray(this.pushTokens) && this.pushTokens.length > 0,
   };
 };
 

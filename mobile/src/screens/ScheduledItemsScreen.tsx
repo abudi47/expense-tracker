@@ -20,6 +20,7 @@ import { theme, fonts, palette } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 import { useToast } from '../components/Toast';
 import { haptics } from '../utils/haptics';
+import { emitDataRefresh, onDataRefresh } from '../utils/dataRefresh';
 
 function accountNameOf(item: ScheduledItem) {
   if (item.account?.name) return item.account.name;
@@ -34,7 +35,7 @@ export default function ScheduledItemsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const data = await api.get<ScheduledItem[]>('/scheduled-items');
       setItems(data.filter((i) => i.status !== 'cancelled' && i.status !== 'landed'));
@@ -44,14 +45,22 @@ export default function ScheduledItemsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, []));
+  useFocusEffect(
+    useCallback(() => {
+      load();
+      return onDataRefresh(() => {
+        load();
+      });
+    }, [load])
+  );
 
   const land = async (item: ScheduledItem, force = false, allowOverdraft = false) => {
     try {
       await api.post(`/scheduled-items/${item._id}/land`, { force, allowOverdraft });
       showToast('Added to your ledger', 'success');
+      emitDataRefresh('scheduled-land');
       load();
     } catch (err) {
       if (err instanceof ApiError && err.code === 'DUPLICATE') {

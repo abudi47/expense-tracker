@@ -3,7 +3,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 import { Ionicons } from '@expo/vector-icons';
 import { theme, typography, fonts, palette } from '../theme';
 import { useThemeColors } from '../theme/useThemeColors';
-import { formatCurrency } from '../utils/format';
+import { formatCurrency, currencyLabel, currencyChipColor } from '../utils/format';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -71,16 +71,23 @@ interface AmountTextProps {
   type?: 'income' | 'expense' | 'transfer' | 'neutral';
   showSign?: boolean;
   className?: string;
+  currency?: string;
 }
 
-export function AmountText({ amount, type = 'neutral', showSign, className }: AmountTextProps) {
+export function AmountText({
+  amount,
+  type = 'neutral',
+  showSign,
+  className,
+  currency = 'ETB',
+}: AmountTextProps) {
   const colorClass =
     type === 'income'
       ? 'text-emerald-600 dark:text-emerald-400'
       : type === 'expense'
         ? 'text-red-600 dark:text-red-400'
         : type === 'transfer'
-          ? 'text-violet-600 dark:text-violet-400'
+          ? 'text-blue-600 dark:text-blue-400'
           : theme.title;
 
   const sign =
@@ -92,7 +99,7 @@ export function AmountText({ amount, type = 'neutral', showSign, className }: Am
       style={{ fontFamily: fonts.semibold, fontVariant: ['tabular-nums'] }}
     >
       {sign}
-      {formatCurrency(amount)}
+      {formatCurrency(amount, currency)}
     </Text>
   );
 }
@@ -138,21 +145,20 @@ export function AccountCard({
         >
           <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={20} color={color} />
         </View>
-        {fxGroup === 'crypto' ? (
+        <View
+          className="px-2 py-0.5 rounded-md"
+          style={{ backgroundColor: currencyChipColor(currency) + '22' }}
+        >
           <Text
-            className="text-[10px] text-amber-600 dark:text-amber-400"
-            style={{ fontFamily: fonts.medium }}
+            style={{
+              fontFamily: fonts.semibold,
+              fontSize: 10,
+              color: currencyChipColor(currency),
+            }}
           >
-            Crypto
+            {currencyLabel(currency)}
           </Text>
-        ) : fxGroup === 'bank' ? (
-          <Text
-            className="text-[10px] text-violet-600 dark:text-violet-400"
-            style={{ fontFamily: fonts.medium }}
-          >
-            Bank FX
-          </Text>
-        ) : null}
+        </View>
       </View>
       <Text className={`${theme.subtitle} text-xs`} style={{ fontFamily: fonts.medium }}>
         {name}

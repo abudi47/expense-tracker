@@ -10,11 +10,12 @@ import { LegacyBadge } from './design';
 interface Props {
   item: Transaction;
   accountName?: string;
+  currency?: string;
   onPress: () => void;
   onDelete: () => void;
 }
 
-function TransactionRow({ item, accountName, onPress, onDelete }: Props) {
+function TransactionRow({ item, accountName, currency = 'ETB', onPress, onDelete }: Props) {
   const isLegacy = !item.accountId;
   const accent =
     item.type === 'income'
@@ -44,7 +45,7 @@ function TransactionRow({ item, accountName, onPress, onDelete }: Props) {
         activeOpacity={0.85}
         className={`${theme.card} rounded-2xl p-4 mb-3 flex-row items-center`}
         style={{
-          shadowColor: '#1E1B4B',
+          shadowColor: '#0F172A',
           shadowOpacity: 0.06,
           shadowRadius: 6,
           shadowOffset: { width: 0, height: 2 },
@@ -92,7 +93,7 @@ function TransactionRow({ item, accountName, onPress, onDelete }: Props) {
           }}
         >
           {item.type === 'income' ? '+' : item.type === 'expense' ? '-' : ''}
-          {formatCurrency(item.amount)}
+          {formatCurrency(item.amount, currency)}
         </Text>
       </TouchableOpacity>
     </Swipeable>

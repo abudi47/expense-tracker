@@ -168,6 +168,7 @@ export interface DetectedItem {
 
 export interface UserPreferences {
   scheduledWindowDays: 7 | 14 | 30;
+  pushAlertsEnabled?: boolean;
   ingest: {
     gmailConnected: boolean;
     gmailBinance: boolean;
@@ -176,6 +177,23 @@ export interface UserPreferences {
     gmailEmail?: string | null;
     senderAllowlist?: string[];
   };
+}
+
+export interface GmailSyncResult {
+  scanned: number;
+  queued: number;
+  parseFailed: number;
+  duplicates: number;
+  alreadyQueued: number;
+  skippedOther?: number;
+  needsReviewCount?: number;
+  samples?: Array<{
+    reason: string;
+    from?: string;
+    subject?: string;
+    snippet?: string;
+  }>;
+  items?: DetectedItem[];
 }
 
 export interface Transaction {

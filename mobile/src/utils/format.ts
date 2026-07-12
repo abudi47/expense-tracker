@@ -1,5 +1,5 @@
-export function formatCurrency(amount: number, currency: string = 'USD'): string {
-  const cur = (currency || 'USD').toUpperCase();
+export function formatCurrency(amount: number, currency: string = 'ETB'): string {
+  const cur = (currency || 'ETB').toUpperCase();
 
   if (cur === 'ETB') {
     return (
@@ -35,6 +35,22 @@ export function formatCurrency(amount: number, currency: string = 'USD'): string
       cur
     );
   }
+}
+
+/** Short label for chips */
+export function currencyLabel(currency: string = 'ETB'): string {
+  const cur = (currency || 'ETB').toUpperCase();
+  if (cur === 'ETB') return 'Br';
+  if (cur === 'USDT') return 'USDT';
+  return cur;
+}
+
+export function currencyChipColor(currency: string = 'ETB'): string {
+  const cur = (currency || 'ETB').toUpperCase();
+  if (cur === 'USDT') return '#0D9488';
+  if (cur === 'ETB') return '#D97706';
+  if (cur === 'USD') return '#2563EB';
+  return '#64748B';
 }
 
 export function formatDate(date: string | Date): string {

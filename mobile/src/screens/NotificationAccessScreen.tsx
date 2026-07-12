@@ -6,6 +6,11 @@ import { theme, fonts, palette } from '../theme';
 import { api } from '../services/api';
 import { useToast } from '../components/Toast';
 import { haptics } from '../utils/haptics';
+import {
+  isNativeListenerAvailable,
+  openSystemNotificationAccess,
+  startAndroidNotificationBridge,
+} from '../services/androidNotificationListener';
 
 /**
  * DISCLOSURE COPY — review before Play Store submission that requests
@@ -29,6 +34,7 @@ export const NOTIFICATION_DISCLOSURE = {
 export default function NotificationAccessScreen() {
   const navigation = useNavigation();
   const { showToast } = useToast();
+  const nativeReady = isNativeListenerAvailable();
 
   const openSystemSettings = async () => {
     if (Platform.OS !== 'android') {
@@ -36,6 +42,10 @@ export default function NotificationAccessScreen() {
       return;
     }
     try {
+      if (nativeReady) {
+        openSystemNotificationAccess();
+        return;
+      }
       await IntentLauncher.startActivityAsync(
         'android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS'
       );
@@ -50,8 +60,16 @@ export default function NotificationAccessScreen() {
       await api.put('/settings/preferences', {
         ingest: { androidNotifications: true },
       });
+      startAndroidNotificationBridge();
       await openSystemSettings();
-      showToast('Enable Asset Tracker in the list, then return', 'info');
+      if (!nativeReady) {
+        showToast(
+          'Rebuild required: Asset Tracker appears in Notification access only after an EAS Android build (not Expo Go).',
+          'info'
+        );
+      } else {
+        showToast('Enable Asset Tracker in the list, then return', 'info');
+      }
       navigation.goBack();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to enable', 'error');
@@ -77,6 +95,19 @@ export default function NotificationAccessScreen() {
           </View>
         ))}
       </Card>
+
+      {!nativeReady ? (
+        <Card className="mb-4" style={{ borderColor: palette.primary + '44', borderWidth: 1 }}>
+          <Text style={{ fontFamily: fonts.semibold, color: palette.primary, marginBottom: 6 }}>
+            EAS rebuild required
+          </Text>
+          <Text className={theme.subtitle} style={{ fontFamily: fonts.regular, fontSize: 13 }}>
+            Native NotificationListenerService is included in the project, but Expo Go cannot register
+            it. Run an EAS preview/production Android build so “Asset Tracker” appears under Notification
+            access.
+          </Text>
+        </Card>
+      ) : null}
 
       <Card className="mb-6" style={{ borderColor: palette.warning + '55', borderWidth: 1 }}>
         <Text style={{ fontFamily: fonts.semibold, color: palette.warning, marginBottom: 6 }}>

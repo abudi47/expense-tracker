@@ -8,12 +8,15 @@ import { Card, Button, SettingRow, ScreenHeader, Input } from '../components/ui'
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../components/Toast';
-import { api, FxSettings, UserPreferences } from '../services/api';
+import { api, FxSettings, GmailSyncResult, UserPreferences } from '../services/api';
 import { palette, theme, ThemeMode, fonts } from '../theme';
 import { useThemeColors } from '../theme/useThemeColors';
 import { haptics } from '../utils/haptics';
 import { RootStackParamList } from '../navigation/types';
 import { startAndroidNotificationBridge } from '../services/androidNotificationListener';
+import { enablePushAlerts, disablePushAlerts, notifyLocalDetected } from '../services/pushNotifications';
+import { formatSyncToast, saveLastSyncStats } from '../utils/lastSyncStats';
+import { emitDataRefresh } from '../utils/dataRefresh';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -163,13 +166,51 @@ export default function SettingsScreen() {
   const syncGmail = async () => {
     setSyncing(true);
     try {
-      const result = await api.post<{ scanned: number; queued: number }>('/ingest/gmail/sync', {});
-      showToast(`Scanned ${result.scanned}, queued ${result.queued}`, 'success');
+      const result = await api.post<GmailSyncResult>('/ingest/gmail/sync', {});
+      const breakdown = {
+        scanned: result.scanned || 0,
+        queued: result.queued || 0,
+        parseFailed: result.parseFailed || 0,
+        duplicates: result.duplicates || 0,
+        alreadyQueued: result.alreadyQueued || 0,
+        skippedOther: result.skippedOther,
+        needsReviewCount: result.needsReviewCount,
+        samples: result.samples,
+      };
+      await saveLastSyncStats(breakdown);
+      const msg = formatSyncToast(breakdown);
+      if (breakdown.queued > 0) {
+        showToast(msg, 'success');
+        await notifyLocalDetected(breakdown.queued);
+        emitDataRefresh('gmail-sync');
+        navigation.navigate('DetectedInbox');
+      } else if (breakdown.parseFailed > 0) {
+        showToast(`${msg}. Couldn’t parse — open Detected for details.`, 'info');
+        emitDataRefresh('gmail-sync');
+      } else {
+        showToast(msg, breakdown.alreadyQueued > 0 ? 'info' : 'success');
+        emitDataRefresh('gmail-sync');
+      }
       await loadAll();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Sync failed', 'error');
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const togglePushAlerts = async (value: boolean) => {
+    try {
+      if (value) {
+        await enablePushAlerts();
+        showToast('Push alerts enabled', 'success');
+      } else {
+        await disablePushAlerts();
+        showToast('Push alerts disabled', 'info');
+      }
+      await loadAll();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not update push alerts', 'error');
     }
   };
 
@@ -352,6 +393,19 @@ export default function SettingsScreen() {
               />
             </>
           ) : null}
+          <View className={`h-px my-2 ${theme.divider}`} />
+          <SettingRow
+            icon={<Ionicons name="notifications-circle-outline" size={22} color={palette.primary} />}
+            title="Push alerts for detected"
+            subtitle="Notify when new items need review or scheduled items go overdue"
+            right={
+              <Switch
+                value={!!prefs?.pushAlertsEnabled}
+                onValueChange={togglePushAlerts}
+                trackColor={{ false: colors.switchOff, true: palette.primary }}
+              />
+            }
+          />
         </Card>
 
         <Text

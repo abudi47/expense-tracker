@@ -30,6 +30,7 @@ import { RootStackParamList } from '../navigation/types';
 import { theme, fonts, palette } from '../theme';
 import { useChartConfig, PIE_COLORS, useThemeColors } from '../theme/useThemeColors';
 import { haptics } from '../utils/haptics';
+import { onDataRefresh } from '../utils/dataRefresh';
 
 const screenWidth = Dimensions.get('window').width;
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -45,7 +46,7 @@ export default function InsightsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const loadSummary = async () => {
+  const loadSummary = useCallback(async () => {
     try {
       const data = await api.get<DashboardSummary>('/dashboard/summary');
       setSummary(data);
@@ -55,9 +56,16 @@ export default function InsightsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useFocusEffect(useCallback(() => { loadSummary(); }, []));
+  useFocusEffect(
+    useCallback(() => {
+      loadSummary();
+      return onDataRefresh(() => {
+        loadSummary();
+      });
+    }, [loadSummary])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);

@@ -13,14 +13,28 @@ function addMonths(date, months) {
 }
 
 async function refreshOverdue(userId) {
-  await ScheduledItem.updateMany(
-    {
-      userId,
-      status: 'pending',
-      expectedDate: { $lt: startOfToday() },
-    },
-    { $set: { status: 'overdue' } }
-  );
+  const filter = {
+    userId,
+    status: 'pending',
+    expectedDate: { $lt: startOfToday() },
+  };
+  const newlyOverdue = await ScheduledItem.countDocuments(filter);
+  await ScheduledItem.updateMany(filter, { $set: { status: 'overdue' } });
+
+  if (newlyOverdue > 0) {
+    try {
+      const User = require('../models/User');
+      const user = await User.findById(userId);
+      if (user?.pushAlertsEnabled) {
+        const { notifyOverdueScheduled } = require('./push');
+        await notifyOverdueScheduled(user, newlyOverdue);
+      }
+    } catch {
+      // push optional
+    }
+  }
+
+  return newlyOverdue;
 }
 
 function withEffectiveStatus(item) {

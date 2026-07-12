@@ -14,6 +14,8 @@ import { formatCurrency, formatDate } from '../utils/format';
 import { theme, fonts, palette } from '../theme';
 import { useToast } from '../components/Toast';
 import { haptics } from '../utils/haptics';
+import { emitDataRefresh, onDataRefresh } from '../utils/dataRefresh';
+import { formatSyncToast, loadLastSyncStats, GmailSyncBreakdown } from '../utils/lastSyncStats';
 
 function suggestedId(item: DetectedItem) {
   if (typeof item.suggestedAccountId === 'object' && item.suggestedAccountId) {
@@ -28,15 +30,19 @@ export default function DetectedInboxScreen() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [error, setError] = useState('');
   const [selectedAccounts, setSelectedAccounts] = useState<Record<string, string>>({});
+  const [lastSync, setLastSync] = useState<GmailSyncBreakdown | null>(null);
+  const [showSamples, setShowSamples] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
-      const [detected, accs] = await Promise.all([
+      const [detected, accs, sync] = await Promise.all([
         api.get<{ items: DetectedItem[]; needsReviewCount: number }>('/detected?status=needs_review'),
         api.get<Account[]>('/accounts'),
+        loadLastSyncStats(),
       ]);
       setItems(detected.items);
       setAccounts(accs);
+      setLastSync(sync);
       const map: Record<string, string> = {};
       detected.items.forEach((i) => {
         map[i._id] = suggestedId(i) || accs[0]?._id || '';
@@ -46,9 +52,30 @@ export default function DetectedInboxScreen() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
     }
-  };
+  }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, []));
+  useFocusEffect(
+    useCallback(() => {
+      load();
+      const unsub = onDataRefresh(() => {
+        load();
+      });
+      const poll = setInterval(async () => {
+        try {
+          const c = await api.get<{ needsReviewCount: number }>('/detected/count');
+          if (c.needsReviewCount !== items.length) {
+            load();
+          }
+        } catch {
+          // ignore
+        }
+      }, 30000);
+      return () => {
+        unsub();
+        clearInterval(poll);
+      };
+    }, [load, items.length])
+  );
 
   const approve = async (item: DetectedItem, force = false, allowOverdraft = false) => {
     try {
@@ -64,6 +91,7 @@ export default function DetectedInboxScreen() {
         allowOverdraft,
       });
       showToast('Transaction added', 'success');
+      emitDataRefresh('detect-approve');
       if (result.balanceMismatch) {
         Alert.alert(
           'Balance mismatch',
@@ -97,8 +125,21 @@ export default function DetectedInboxScreen() {
   const dismiss = async (item: DetectedItem) => {
     await api.post(`/detected/${item._id}/dismiss`, {});
     haptics.light();
+    emitDataRefresh('detect-dismiss');
     load();
   };
+
+  const emptySubtitle = (() => {
+    if (!lastSync) return 'Detected SMS/email transactions will appear here';
+    const base = formatSyncToast(lastSync);
+    if (lastSync.parseFailed > 0) {
+      return `${base}. Tap “Last sync details” below if sync couldn’t parse messages.`;
+    }
+    if (lastSync.queued === 0 && lastSync.alreadyQueued === 0) {
+      return `${base}. Nothing new was queued.`;
+    }
+    return base;
+  })();
 
   return (
     <View className={`flex-1 ${theme.screen}`}>
@@ -115,11 +156,40 @@ export default function DetectedInboxScreen() {
         keyExtractor={(i) => i._id}
         contentContainerClassName="px-5 pb-10"
         ListEmptyComponent={
-          <EmptyState
-            icon="mail-unread-outline"
-            title="Nothing to review"
-            subtitle="Detected SMS/email transactions will appear here"
-          />
+          <View>
+            <EmptyState
+              icon="mail-unread-outline"
+              title="Nothing to review"
+              subtitle={emptySubtitle}
+            />
+            {lastSync && (lastSync.parseFailed > 0 || (lastSync.samples?.length || 0) > 0) ? (
+              <TouchableOpacity
+                onPress={() => setShowSamples((v) => !v)}
+                className="mt-2 px-2"
+              >
+                <Text style={{ fontFamily: fonts.medium, color: palette.primary, fontSize: 13 }}>
+                  {showSamples ? 'Hide' : 'Show'} last sync details
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+            {showSamples && lastSync?.samples?.length ? (
+              <View className={`${theme.card} rounded-2xl p-3 mt-3`}>
+                {lastSync.samples.map((s, idx) => (
+                  <View key={`${s.subject}-${idx}`} className="mb-3">
+                    <Text style={{ fontFamily: fonts.medium, fontSize: 12, color: palette.warning }}>
+                      {s.reason}
+                    </Text>
+                    <Text className={theme.subtitle} style={{ fontFamily: fonts.regular, fontSize: 11 }}>
+                      {s.from || ''}
+                    </Text>
+                    <Text className={theme.title} style={{ fontFamily: fonts.regular, fontSize: 12 }}>
+                      {s.subject || s.snippet || ''}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
         }
         renderItem={({ item }) => {
           const color = item.direction === 'incoming' ? palette.income : palette.expense;
@@ -148,7 +218,7 @@ export default function DetectedInboxScreen() {
               </View>
               <Text className={theme.subtitle} style={{ fontFamily: fonts.regular, fontSize: 12 }}>
                 {formatDate(item.date)}
-                {item.fee ? ` · Fee ${formatCurrency(item.fee)}` : ''}
+                {item.fee ? ` · Fee ${formatCurrency(item.fee, item.currency)}` : ''}
                 {item.rawReference ? ` · Ref ${item.rawReference.slice(0, 16)}` : ''}
               </Text>
               {item.rawSnippet ? (

@@ -1,0 +1,12 @@
+{
+  "name": "android-notification-listener",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "description": "Local Expo module: Android NotificationListenerService for Asset Tracker",
+  "license": "MIT",
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}

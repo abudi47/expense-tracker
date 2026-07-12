@@ -216,6 +216,12 @@ router.post('/gmail/sync', async (req, res) => {
     );
 
     const created = [];
+    const samples = [];
+    let parseFailed = 0;
+    let duplicates = 0;
+    let alreadyQueued = 0;
+    let skippedOther = 0;
+
     for (const msg of list.messages || []) {
       const full = await gmailGet(
         `/users/me/messages/${msg.id}?format=full`,
@@ -230,35 +236,86 @@ router.post('/gmail/sync', async (req, res) => {
         allowlist.some((d) => from.includes(d)) ||
         from.includes('binance') ||
         from.includes('grey');
-      if (!allowed) continue;
+      if (!allowed) {
+        skippedOther += 1;
+        continue;
+      }
 
       let parsed = null;
       if (user.ingest.gmailBinance && (from.includes('binance') || /binance/i.test(subject))) {
-        parsed = parseEmail(subject, body);
-        if (parsed && parsed.source !== 'binance') {
-          const { parseBinance } = require('../parsers/binance');
-          parsed = parseBinance(subject, body);
-        }
+        const { parseBinance } = require('../parsers/binance');
+        parsed = parseBinance(subject, body) || parseEmail(subject, body);
       }
       if (!parsed && user.ingest.gmailGrey) {
         const { parseGrey } = require('../parsers/grey');
-        parsed = parseGrey(subject, body) || (from.includes('grey') ? parseEmail(subject, body) : null);
+        parsed =
+          parseGrey(subject, body) ||
+          (from.includes('grey') || /grey/i.test(subject) ? parseEmail(subject, body) : null);
       }
-      if (!parsed) continue;
 
-      const item = await upsertDetectedFromParsed(req.user._id, parsed);
-      if (item && item.status === 'needs_review') created.push(item);
+      if (!parsed) {
+        parseFailed += 1;
+        if (samples.length < 5) {
+          samples.push({
+            reason: 'parse_failed',
+            from: from.slice(0, 80),
+            subject: subject.slice(0, 120),
+            snippet: stripForSample(body),
+          });
+        }
+        continue;
+      }
+
+      const { item, outcome } = await upsertDetectedFromParsed(req.user._id, parsed);
+      if (outcome === 'created' && item) {
+        created.push(item);
+        try {
+          const { notifyDetectedItem } = require('../utils/push');
+          await notifyDetectedItem(user, item);
+        } catch {
+          // push optional
+        }
+      } else if (outcome === 'already_queued') {
+        alreadyQueued += 1;
+      } else if (outcome === 'duplicate') {
+        duplicates += 1;
+      } else {
+        skippedOther += 1;
+        if (samples.length < 5) {
+          samples.push({
+            reason: outcome,
+            from: from.slice(0, 80),
+            subject: subject.slice(0, 120),
+            snippet: (parsed.rawSnippet || '').slice(0, 120),
+          });
+        }
+      }
     }
+
+    const needsReviewCount = await require('../models/DetectedItem').countDocuments({
+      userId: req.user._id,
+      status: 'needs_review',
+    });
 
     res.json({
       scanned: (list.messages || []).length,
       queued: created.length,
+      parseFailed,
+      duplicates,
+      alreadyQueued,
+      skippedOther,
+      needsReviewCount,
+      samples,
       items: created,
     });
   } catch (error) {
     res.status(500).json({ message: error.message || 'Gmail sync failed' });
   }
 });
+
+function stripForSample(body = '') {
+  return String(body).replace(/\s+/g, ' ').trim().slice(0, 140);
+}
 
 /** Android notification ingest — client sends title/body after opt-in listener */
 router.post('/notification', async (req, res) => {
@@ -280,12 +337,21 @@ router.post('/notification', async (req, res) => {
       return res.json({ matched: false, item: null });
     }
 
-    const item = await upsertDetectedFromParsed(req.user._id, {
+    const { item, outcome } = await upsertDetectedFromParsed(req.user._id, {
       ...parsed,
       rawSnippet: `${packageName || ''} ${parsed.rawSnippet || ''}`.trim().slice(0, 500),
     });
 
-    res.json({ matched: true, item });
+    if (outcome === 'created' && item) {
+      try {
+        const { notifyDetectedItem } = require('../utils/push');
+        await notifyDetectedItem(user, item);
+      } catch {
+        // ignore
+      }
+    }
+
+    res.json({ matched: true, item, outcome });
   } catch (error) {
     res.status(500).json({ message: error.message || 'Notification ingest failed' });
   }

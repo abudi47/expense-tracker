@@ -22,6 +22,7 @@ import { useAuth } from '../context/AuthContext';
 import { theme, fonts, palette } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 import { haptics } from '../utils/haptics';
+import { onDataRefresh } from '../utils/dataRefresh';
 
 type BalanceView = 'available' | 'landing' | 'projected';
 
@@ -35,7 +36,7 @@ export default function AssetsDashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = async (currency?: 'ETB' | 'USD') => {
+  const load = useCallback(async (currency?: 'ETB' | 'USD') => {
     try {
       const view = currency || displayCurrency;
       const data = await api.get<AccountsSummary>(
@@ -49,12 +50,31 @@ export default function AssetsDashboardScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [displayCurrency]);
 
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [])
+      const unsub = onDataRefresh(() => {
+        load();
+      });
+      let lastCount = -1;
+      const poll = setInterval(async () => {
+        try {
+          const c = await api.get<{ needsReviewCount: number }>('/detected/count');
+          if (lastCount >= 0 && c.needsReviewCount !== lastCount) {
+            load();
+          }
+          lastCount = c.needsReviewCount;
+        } catch {
+          // ignore
+        }
+      }, 30000);
+      return () => {
+        unsub();
+        clearInterval(poll);
+      };
+    }, [load])
   );
 
   const onRefresh = async () => {

@@ -18,6 +18,7 @@ import { RootStackParamList } from '../navigation/types';
 import { theme, fonts, palette } from '../theme';
 import { useThemeColors } from '../theme/useThemeColors';
 import { haptics } from '../utils/haptics';
+import { emitDataRefresh } from '../utils/dataRefresh';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddTransaction'>;
 
@@ -102,6 +103,7 @@ export default function AddTransactionScreen({ navigation, route }: Props) {
         await api.post('/transactions', payload);
         showToast('Transaction saved', 'success');
       }
+      emitDataRefresh('transaction');
       navigation.goBack();
     } catch (err) {
       if (err instanceof ApiError && err.code === 'OVERDRAFT') {
@@ -135,6 +137,7 @@ export default function AddTransactionScreen({ navigation, route }: Props) {
         onPress: async () => {
           await api.delete(`/transactions/${existing._id}`);
           showToast('Transaction deleted', 'info');
+          emitDataRefresh('transaction');
           navigation.goBack();
         },
       },

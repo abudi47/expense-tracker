@@ -12,6 +12,7 @@ import { SkeletonList } from '../components/Skeleton';
 import { api, Transaction, Account } from '../services/api';
 import { RootStackParamList } from '../navigation/types';
 import { theme, fonts, palette } from '../theme';
+import { onDataRefresh } from '../utils/dataRefresh';
 
 type FilterType = 'all' | 'income' | 'expense' | 'legacy';
 
@@ -26,8 +27,9 @@ export default function TransactionListScreen() {
   const [detectedCount, setDetectedCount] = useState(0);
 
   const accountMap = Object.fromEntries(accounts.map((a) => [a._id, a.name]));
+  const currencyMap = Object.fromEntries(accounts.map((a) => [a._id, a.currency || 'ETB']));
 
-  const loadTransactions = async () => {
+  const loadTransactions = useCallback(async () => {
     try {
       let path = '/transactions';
       if (filter === 'legacy') path += '?legacyOnly=true';
@@ -46,13 +48,16 @@ export default function TransactionListScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter]);
 
   useFocusEffect(
     useCallback(() => {
       api.get<Account[]>('/accounts').then(setAccounts).catch(() => {});
       loadTransactions();
-    }, [filter])
+      return onDataRefresh(() => {
+        loadTransactions();
+      });
+    }, [loadTransactions])
   );
 
   const onRefresh = async () => {
@@ -170,6 +175,7 @@ export default function TransactionListScreen() {
               <TransactionRow
                 item={item}
                 accountName={item.accountId ? accountMap[item.accountId] : undefined}
+                currency={item.accountId ? currencyMap[item.accountId] : 'ETB'}
                 onPress={() => navigation.navigate('AddTransaction', { transaction: item })}
                 onDelete={async () => {
                   await api.delete(`/transactions/${item._id}`);
