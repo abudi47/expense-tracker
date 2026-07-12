@@ -23,6 +23,7 @@ export default function TransactionListScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [detectedCount, setDetectedCount] = useState(0);
 
   const accountMap = Object.fromEntries(accounts.map((a) => [a._id, a.name]));
 
@@ -31,8 +32,14 @@ export default function TransactionListScreen() {
       let path = '/transactions';
       if (filter === 'legacy') path += '?legacyOnly=true';
       else if (filter !== 'all') path += `?type=${filter}`;
-      const data = await api.get<{ transactions: Transaction[] }>(path);
+      const [data, count] = await Promise.all([
+        api.get<{ transactions: Transaction[] }>(path),
+        api
+          .get<{ needsReviewCount: number }>('/detected/count')
+          .catch(() => ({ needsReviewCount: 0 })),
+      ]);
       setTransactions(data.transactions);
+      setDetectedCount(count.needsReviewCount);
       setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
@@ -66,20 +73,39 @@ export default function TransactionListScreen() {
       <ScreenHeader
         title="Transactions"
         right={
-          <TouchableOpacity
-            onPress={() => navigation.navigate('AddTransaction', {})}
-            className="rounded-full w-10 h-10 items-center justify-center"
-            style={{
-              backgroundColor: palette.primary,
-              shadowColor: palette.primary,
-              shadowOpacity: 0.4,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 3 },
-              elevation: 4,
-            }}
-          >
-            <Ionicons name="add" size={24} color="#fff" />
-          </TouchableOpacity>
+          <View className="flex-row items-center gap-2">
+            <TouchableOpacity
+              onPress={() => navigation.navigate('DetectedInbox')}
+              className="rounded-full w-10 h-10 items-center justify-center"
+              style={{ backgroundColor: palette.primary + '18' }}
+            >
+              <Ionicons name="mail-unread-outline" size={20} color={palette.primary} />
+              {detectedCount > 0 ? (
+                <View
+                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full items-center justify-center px-1"
+                  style={{ backgroundColor: palette.expense }}
+                >
+                  <Text style={{ color: '#fff', fontSize: 10, fontFamily: fonts.bold }}>
+                    {detectedCount > 9 ? '9+' : detectedCount}
+                  </Text>
+                </View>
+              ) : null}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('AddTransaction', {})}
+              className="rounded-full w-10 h-10 items-center justify-center"
+              style={{
+                backgroundColor: palette.primary,
+                shadowColor: palette.primary,
+                shadowOpacity: 0.4,
+                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 3 },
+                elevation: 4,
+              }}
+            >
+              <Ionicons name="add" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
         }
       />
 
@@ -93,14 +119,8 @@ export default function TransactionListScreen() {
               className="px-4 py-2 rounded-full border"
               style={
                 active
-                  ? {
-                      backgroundColor: palette.primary,
-                      borderColor: palette.primary,
-                    }
-                  : {
-                      backgroundColor: 'transparent',
-                      borderColor: palette.primary + '33',
-                    }
+                  ? { backgroundColor: palette.primary, borderColor: palette.primary }
+                  : { backgroundColor: 'transparent', borderColor: palette.primary + '33' }
               }
             >
               <Text

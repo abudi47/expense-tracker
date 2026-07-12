@@ -118,6 +118,10 @@ router.post('/', async (req, res) => {
       accountId,
       toAccountId,
       allowOverdraft,
+      externalRef,
+      sourceChannel,
+      fee,
+      vat,
     } = req.body;
 
     if (!type || amount == null) {
@@ -203,6 +207,10 @@ router.post('/', async (req, res) => {
       date: date || new Date(),
       note,
       isRecurring: isRecurring || false,
+      externalRef: externalRef || undefined,
+      sourceChannel: sourceChannel || 'manual',
+      fee: fee || undefined,
+      vat: vat || undefined,
     });
 
     res.status(201).json(transaction);

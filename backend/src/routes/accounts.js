@@ -2,13 +2,15 @@ const express = require('express');
 const Account = require('../models/Account');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
+const ScheduledItem = require('../models/ScheduledItem');
 const auth = require('../middleware/auth');
 const {
   computeAccountBalance,
   computeAllAccountBalances,
   validateAccountOwnership,
 } = require('../utils/accountBalance');
-const { attachConvertedBalances, sumConverted } = require('../utils/fx');
+const { attachConvertedBalances, sumConverted, convertBalance } = require('../utils/fx');
+const { refreshOverdue, startOfToday } = require('../utils/scheduled');
 
 const router = express.Router();
 
@@ -97,6 +99,72 @@ router.get('/summary', async (req, res) => {
       accountId: { $exists: false },
     });
 
+    const user = await User.findById(req.user._id);
+    const windowDays = user?.scheduledWindowDays || 7;
+    await refreshOverdue(req.user._id);
+
+    const windowEnd = new Date();
+    windowEnd.setHours(23, 59, 59, 999);
+    windowEnd.setDate(windowEnd.getDate() + windowDays);
+
+    const openScheduled = await ScheduledItem.find({
+      userId: req.user._id,
+      status: { $in: ['pending', 'overdue'] },
+    }).populate('accountId', 'name currency color icon fxGroup');
+
+    const accountMap = Object.fromEntries(
+      accounts.map((a) => [String(a._id), a])
+    );
+
+    let landingSoonIncoming = 0;
+    let landingSoonOutgoing = 0;
+    const overdueScheduled = [];
+    const landingSoonItems = [];
+
+    for (const raw of openScheduled) {
+      const item = raw.toObject ? raw.toObject() : { ...raw };
+      const expected = new Date(item.expectedDate);
+      const isOverdue = expected < startOfToday() || item.status === 'overdue';
+      if (isOverdue) item.status = 'overdue';
+
+      const acc =
+        item.accountId && typeof item.accountId === 'object'
+          ? item.accountId
+          : accountMap[String(item.accountId)];
+      const currency = item.currency || acc?.currency || 'ETB';
+      const fxGroup = acc?.fxGroup || Account.inferFxGroup(acc?.name || '', currency);
+      const converted = convertBalance(item.amount, currency, fxGroup, fx, displayCurrency);
+
+      const enriched = {
+        ...item,
+        accountId: acc?._id || item.accountId,
+        account: acc
+          ? { _id: acc._id, name: acc.name, currency: acc.currency, color: acc.color, icon: acc.icon }
+          : null,
+        convertedAmount: converted,
+      };
+
+      if (isOverdue) {
+        overdueScheduled.push(enriched);
+      }
+
+      if (!isOverdue && expected <= windowEnd) {
+        landingSoonItems.push(enriched);
+        if (item.direction === 'incoming') landingSoonIncoming += converted;
+        else landingSoonOutgoing += converted;
+      } else if (isOverdue && item.direction === 'incoming') {
+        // Overdue incoming still counts toward "landing soon" urgency totals
+        landingSoonIncoming += converted;
+        landingSoonItems.push(enriched);
+      } else if (isOverdue && item.direction === 'outgoing') {
+        landingSoonOutgoing += converted;
+        landingSoonItems.push(enriched);
+      }
+    }
+
+    const availableNow = totalConverted;
+    const projectedTotal = availableNow + landingSoonIncoming - landingSoonOutgoing;
+
     res.json({
       totalsByCurrency: Object.values(byCurrency),
       accounts: withFx,
@@ -104,6 +172,13 @@ router.get('/summary', async (req, res) => {
       fx,
       displayCurrency,
       totalConverted,
+      availableNow,
+      landingSoonIncoming,
+      landingSoonOutgoing,
+      projectedTotal,
+      scheduledWindowDays: windowDays,
+      overdueScheduled,
+      landingSoonItems,
     });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch accounts summary', error: error.message });

@@ -33,6 +33,9 @@ app.use('/api/budgets', budgetRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/scheduled-items', require('./routes/scheduledItems'));
+app.use('/api/ingest', require('./routes/ingest'));
+app.use('/api/detected', require('./routes/detected'));
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

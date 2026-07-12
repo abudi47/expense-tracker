@@ -21,6 +21,11 @@ import AddTransactionScreen from './src/screens/AddTransactionScreen';
 import AccountDetailScreen from './src/screens/AccountDetailScreen';
 import ManageAccountsScreen from './src/screens/ManageAccountsScreen';
 import TransferScreen from './src/screens/TransferScreen';
+import ScheduledItemsScreen, {
+  AddScheduledItemScreen,
+} from './src/screens/ScheduledItemsScreen';
+import DetectedInboxScreen from './src/screens/DetectedInboxScreen';
+import NotificationAccessScreen from './src/screens/NotificationAccessScreen';
 import { RootStackParamList } from './src/navigation/types';
 import { theme, palette, fonts } from './src/theme';
 import { useThemeColors } from './src/theme/useThemeColors';
@@ -96,6 +101,48 @@ function RootNavigator() {
               title: 'Transfer',
               presentation: 'modal',
               animation: 'fade_from_bottom',
+            }}
+          />
+          <Stack.Screen
+            name="ScheduledItems"
+            component={ScheduledItemsScreen}
+            options={{
+              headerShown: true,
+              headerStyle: { backgroundColor: colors.surface },
+              headerTintColor: colors.text,
+              title: 'Scheduled',
+            }}
+          />
+          <Stack.Screen
+            name="AddScheduledItem"
+            component={AddScheduledItemScreen}
+            options={{
+              headerShown: true,
+              headerStyle: { backgroundColor: colors.surface },
+              headerTintColor: colors.text,
+              title: 'Add scheduled',
+              presentation: 'modal',
+              animation: 'fade_from_bottom',
+            }}
+          />
+          <Stack.Screen
+            name="DetectedInbox"
+            component={DetectedInboxScreen}
+            options={{
+              headerShown: true,
+              headerStyle: { backgroundColor: colors.surface },
+              headerTintColor: colors.text,
+              title: 'Detected',
+            }}
+          />
+          <Stack.Screen
+            name="NotificationAccess"
+            component={NotificationAccessScreen}
+            options={{
+              headerShown: true,
+              headerStyle: { backgroundColor: colors.surface },
+              headerTintColor: colors.text,
+              title: 'Notification access',
             }}
           />
         </>

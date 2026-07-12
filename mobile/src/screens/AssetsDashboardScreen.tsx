@@ -23,11 +23,14 @@ import { theme, fonts, palette } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 import { haptics } from '../utils/haptics';
 
+type BalanceView = 'available' | 'landing' | 'projected';
+
 export default function AssetsDashboardScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [summary, setSummary] = useState<AccountsSummary | null>(null);
   const [displayCurrency, setDisplayCurrency] = useState<'ETB' | 'USD'>('ETB');
+  const [balanceView, setBalanceView] = useState<BalanceView>('available');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -75,6 +78,20 @@ export default function AssetsDashboardScreen() {
 
   const fx = summary?.fx;
 
+  const heroValue =
+    balanceView === 'landing'
+      ? (summary?.landingSoonIncoming || 0) - (summary?.landingSoonOutgoing || 0)
+      : balanceView === 'projected'
+        ? summary?.projectedTotal ?? summary?.totalConverted ?? 0
+        : summary?.availableNow ?? summary?.totalConverted ?? 0;
+
+  const heroLabel =
+    balanceView === 'landing'
+      ? `Landing soon (±${summary?.scheduledWindowDays || 7}d)`
+      : balanceView === 'projected'
+        ? 'Projected · not actual'
+        : `Available now (${displayCurrency})`;
+
   return (
     <ScrollView
       className={`flex-1 ${theme.screen}`}
@@ -98,6 +115,43 @@ export default function AssetsDashboardScreen() {
       />
 
       <View className="px-5">
+        <View
+          className="flex-row mb-3 rounded-xl p-1"
+          style={{ backgroundColor: palette.primary + '14' }}
+        >
+          {(
+            [
+              { key: 'available' as const, label: 'Available' },
+              { key: 'landing' as const, label: 'Landing' },
+              { key: 'projected' as const, label: 'Projected' },
+            ]
+          ).map((v) => (
+            <Pressable
+              key={v.key}
+              onPress={() => {
+                haptics.selection();
+                setBalanceView(v.key);
+              }}
+              className="flex-1 py-2 rounded-lg items-center"
+              style={
+                balanceView === v.key
+                  ? { backgroundColor: palette.primary }
+                  : undefined
+              }
+            >
+              <Text
+                style={{
+                  fontFamily: fonts.semibold,
+                  fontSize: 12,
+                  color: balanceView === v.key ? '#fff' : palette.primary,
+                }}
+              >
+                {v.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
         <View
           className="flex-row mb-4 rounded-xl p-1"
           style={{ backgroundColor: palette.primary + '14' }}
@@ -155,14 +209,40 @@ export default function AssetsDashboardScreen() {
                     color: 'rgba(255,255,255,0.8)',
                   }}
                 >
-                  Total Assets ({displayCurrency})
+                  {heroLabel}
                 </Text>
                 <AnimatedBalance
-                  value={summary.totalConverted || 0}
+                  value={heroValue}
                   currency={displayCurrency}
                   style={{ fontSize: 34, lineHeight: 42, color: '#fff', marginTop: 6 }}
                 />
-                {fx ? (
+                {balanceView === 'landing' ? (
+                  <Text
+                    style={{
+                      fontFamily: fonts.regular,
+                      fontSize: 11,
+                      color: 'rgba(255,255,255,0.75)',
+                      marginTop: 8,
+                    }}
+                  >
+                    In +{formatCurrency(summary.landingSoonIncoming || 0, displayCurrency)} · Out −
+                    {formatCurrency(summary.landingSoonOutgoing || 0, displayCurrency)}
+                  </Text>
+                ) : null}
+                {balanceView === 'projected' ? (
+                  <Text
+                    style={{
+                      fontFamily: fonts.regular,
+                      fontSize: 11,
+                      color: 'rgba(255,255,255,0.75)',
+                      marginTop: 8,
+                    }}
+                  >
+                    Available {formatCurrency(summary.availableNow ?? summary.totalConverted, displayCurrency)}{' '}
+                    + pending net
+                  </Text>
+                ) : null}
+                {fx && balanceView === 'available' ? (
                   <Text
                     style={{
                       fontFamily: fonts.regular,
@@ -174,7 +254,7 @@ export default function AssetsDashboardScreen() {
                     Crypto/Grey 1 USD = {fx.cryptoUsdToEtb} Br · Bank 1 USD = {fx.bankUsdToEtb} Br
                   </Text>
                 ) : null}
-                <View className="flex-row mt-4 gap-3">
+                <View className="flex-row mt-4 gap-3 flex-wrap">
                   <TouchableOpacity
                     onPress={() => navigation.navigate('Transfer')}
                     className="flex-row items-center px-3.5 py-2 rounded-full"
@@ -193,11 +273,11 @@ export default function AssetsDashboardScreen() {
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('ManageAccounts')}
+                    onPress={() => navigation.navigate('ScheduledItems')}
                     className="flex-row items-center px-3.5 py-2 rounded-full"
                     style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
                   >
-                    <Ionicons name="add" size={16} color="#fff" />
+                    <Ionicons name="calendar-outline" size={16} color="#fff" />
                     <Text
                       style={{
                         fontFamily: fonts.semibold,
@@ -206,14 +286,82 @@ export default function AssetsDashboardScreen() {
                         marginLeft: 6,
                       }}
                     >
-                      Add account
+                      Scheduled
                     </Text>
                   </TouchableOpacity>
                 </View>
               </GradientCard>
             </Animated.View>
 
-            {summary.totalsByCurrency.length > 1 && (
+            {(summary.overdueScheduled?.length || 0) > 0 && (
+              <View
+                className={`${theme.card} rounded-2xl p-4 mb-4`}
+                style={{ borderColor: palette.warning + '66', borderWidth: 1 }}
+              >
+                <Text style={{ fontFamily: fonts.semibold, color: palette.warning, marginBottom: 8 }}>
+                  Overdue scheduled
+                </Text>
+                {summary.overdueScheduled!.slice(0, 4).map((item) => (
+                  <TouchableOpacity
+                    key={item._id}
+                    onPress={() => navigation.navigate('ScheduledItems')}
+                    className="flex-row justify-between py-1.5"
+                  >
+                    <Text className={theme.title} style={{ fontFamily: fonts.medium, flex: 1 }}>
+                      {item.title}
+                    </Text>
+                    <Text
+                      style={{
+                        fontFamily: fonts.semibold,
+                        color: item.direction === 'incoming' ? palette.income : palette.expense,
+                      }}
+                    >
+                      {item.direction === 'incoming' ? '+' : '-'}
+                      {formatCurrency(item.convertedAmount ?? item.amount, displayCurrency)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {(summary.landingSoonItems?.length || 0) > 0 && balanceView !== 'available' && (
+              <View className={`${theme.card} rounded-2xl p-4 mb-4`}>
+                <View className="flex-row justify-between mb-2">
+                  <Text className={theme.title} style={{ fontFamily: fonts.semibold }}>
+                    Coming up
+                  </Text>
+                  <TouchableOpacity onPress={() => navigation.navigate('ScheduledItems')}>
+                    <Text style={{ fontFamily: fonts.medium, color: palette.primary, fontSize: 13 }}>
+                      Manage
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                {summary.landingSoonItems!.slice(0, 5).map((item) => (
+                  <View key={item._id} className="flex-row justify-between py-1.5">
+                    <View className="flex-1 pr-2">
+                      <Text className={theme.title} style={{ fontFamily: fonts.medium }}>
+                        {item.title}
+                      </Text>
+                      <Text className={theme.subtitle} style={{ fontFamily: fonts.regular, fontSize: 11 }}>
+                        {new Date(item.expectedDate).toLocaleDateString()}
+                        {item.status === 'overdue' ? ' · Overdue' : ''}
+                      </Text>
+                    </View>
+                    <Text
+                      style={{
+                        fontFamily: fonts.semibold,
+                        color: item.direction === 'incoming' ? palette.income : palette.expense,
+                      }}
+                    >
+                      {item.direction === 'incoming' ? '+' : '-'}
+                      {formatCurrency(item.convertedAmount ?? item.amount, displayCurrency)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {summary.totalsByCurrency.length > 1 && balanceView === 'available' && (
               <View className={`${theme.card} rounded-2xl p-4 mb-4`}>
                 <Text
                   className={`${theme.subtitle} text-xs uppercase mb-2`}

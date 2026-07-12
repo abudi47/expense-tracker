@@ -64,6 +64,10 @@ class ApiClient {
     return this.request<T>('PUT', path, body);
   }
 
+  patch<T>(path: string, body: unknown) {
+    return this.request<T>('PATCH', path, body);
+  }
+
   delete<T>(path: string) {
     return this.request<T>('DELETE', path);
   }
@@ -119,6 +123,59 @@ export interface AccountsSummary {
   fx: FxSettings;
   displayCurrency: 'ETB' | 'USD';
   totalConverted: number;
+  availableNow?: number;
+  landingSoonIncoming?: number;
+  landingSoonOutgoing?: number;
+  projectedTotal?: number;
+  scheduledWindowDays?: number;
+  overdueScheduled?: ScheduledItem[];
+  landingSoonItems?: ScheduledItem[];
+}
+
+export interface ScheduledItem {
+  _id: string;
+  title: string;
+  amount: number;
+  direction: 'incoming' | 'outgoing';
+  expectedDate: string;
+  accountId: string | { _id: string; name: string; currency?: string; color?: string; icon?: string };
+  account?: { _id: string; name: string; currency?: string; color?: string; icon?: string };
+  status: 'pending' | 'landed' | 'overdue' | 'cancelled';
+  recurring?: boolean;
+  note?: string;
+  currency?: string;
+  convertedAmount?: number;
+  transactionId?: string;
+}
+
+export interface DetectedItem {
+  _id: string;
+  source: 'binance' | 'grey' | 'cbe' | 'boa' | 'telebirr' | 'other';
+  amount: number;
+  currency: string;
+  direction: 'incoming' | 'outgoing';
+  date: string;
+  accountHint?: string;
+  suggestedAccountId?: string | Account;
+  rawReference?: string;
+  fee?: number;
+  vat?: number;
+  reportedBalance?: number;
+  rawSnippet?: string;
+  status: 'needs_review' | 'approved' | 'dismissed' | 'duplicate';
+  externalRef?: string;
+}
+
+export interface UserPreferences {
+  scheduledWindowDays: 7 | 14 | 30;
+  ingest: {
+    gmailConnected: boolean;
+    gmailBinance: boolean;
+    gmailGrey: boolean;
+    androidNotifications: boolean;
+    gmailEmail?: string | null;
+    senderAllowlist?: string[];
+  };
 }
 
 export interface Transaction {
@@ -132,6 +189,10 @@ export interface Transaction {
   date: string;
   note?: string;
   isRecurring?: boolean;
+  externalRef?: string;
+  sourceChannel?: string;
+  fee?: number;
+  vat?: number;
 }
 
 export interface Budget {

@@ -40,7 +40,8 @@
           "faceIDPermission": "Allow Asset Tracker to use Face ID for quick sign-in."
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {

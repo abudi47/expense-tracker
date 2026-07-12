@@ -1,4 +1,5 @@
 import { Transaction } from '../services/api';
+import type { ScheduledItem } from '../services/api';
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -19,4 +20,8 @@ export type RootStackParamList = {
   AccountDetail: { accountId: string };
   ManageAccounts: undefined;
   Transfer: undefined;
+  ScheduledItems: undefined;
+  AddScheduledItem: { item?: ScheduledItem } | undefined;
+  DetectedInbox: undefined;
+  NotificationAccess: undefined;
 };

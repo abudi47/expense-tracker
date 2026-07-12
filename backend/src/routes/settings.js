@@ -50,4 +50,50 @@ router.put('/fx', async (req, res) => {
   }
 });
 
+router.get('/preferences', async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({
+      scheduledWindowDays: user.scheduledWindowDays || 7,
+      ingest: user.getIngestSettings(),
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to load preferences', error: error.message });
+  }
+});
+
+router.put('/preferences', async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const { scheduledWindowDays, ingest } = req.body;
+    if ([7, 14, 30].includes(Number(scheduledWindowDays))) {
+      user.scheduledWindowDays = Number(scheduledWindowDays);
+    }
+
+    if (ingest && typeof ingest === 'object') {
+      if (!user.ingest) user.ingest = {};
+      if (typeof ingest.gmailBinance === 'boolean') user.ingest.gmailBinance = ingest.gmailBinance;
+      if (typeof ingest.gmailGrey === 'boolean') user.ingest.gmailGrey = ingest.gmailGrey;
+      if (typeof ingest.androidNotifications === 'boolean') {
+        user.ingest.androidNotifications = ingest.androidNotifications;
+      }
+      if (Array.isArray(ingest.senderAllowlist)) {
+        user.ingest.senderAllowlist = ingest.senderAllowlist.map((s) => String(s).toLowerCase());
+      }
+      user.markModified('ingest');
+    }
+
+    await user.save();
+    res.json({
+      scheduledWindowDays: user.scheduledWindowDays || 7,
+      ingest: user.getIngestSettings(),
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update preferences', error: error.message });
+  }
+});
+
 module.exports = router;
