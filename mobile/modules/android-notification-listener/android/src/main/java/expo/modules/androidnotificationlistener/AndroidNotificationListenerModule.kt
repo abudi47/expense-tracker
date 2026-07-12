@@ -34,14 +34,16 @@ class AndroidNotificationListenerModule : Module() {
     }
 
     Function("openSettings") {
-      val context = appContext.reactContext ?: return@Function
+      val context = appContext.reactContext ?: return@Function false
       val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
       intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       context.startActivity(intent)
+      true
     }
 
     Function("setAllowedPackages") { packages: List<String> ->
       NotificationBridge.allowedPackages = packages.map { it.lowercase() }.toSet()
+      null
     }
   }
 
