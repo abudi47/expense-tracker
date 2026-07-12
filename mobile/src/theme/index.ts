@@ -104,4 +104,22 @@ export const ACCOUNT_COLORS = [
   '#64748b',
 ] as const;
 
-export const CURRENCIES = ['USD', 'EUR', 'GBP', 'NGN', 'BTC', 'USDT'] as const;
+export const CURRENCIES = ['ETB', 'USD', 'USDT', 'EUR', 'GBP'] as const;
+
+export const FX_GROUPS = [
+  {
+    id: 'local' as const,
+    label: 'ETB (local)',
+    hint: 'No conversion — already in Birr',
+  },
+  {
+    id: 'crypto' as const,
+    label: 'Crypto / Grey',
+    hint: 'Uses Binance/Grey USDT→ETB rate',
+  },
+  {
+    id: 'bank' as const,
+    label: 'Bank / other USD',
+    hint: 'Uses bank USD→ETB rate',
+  },
+] as const;

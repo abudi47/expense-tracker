@@ -71,24 +71,53 @@ interface AccountCardProps {
   currency: string;
   icon: string;
   color: string;
+  convertedBalance?: number;
+  displayCurrency?: string;
+  fxGroup?: string;
   onPress?: () => void;
 }
 
-export function AccountCard({ name, balance, currency, icon, color, onPress }: AccountCardProps) {
+export function AccountCard({
+  name,
+  balance,
+  currency,
+  icon,
+  color,
+  convertedBalance,
+  displayCurrency,
+  fxGroup,
+  onPress,
+}: AccountCardProps) {
+  const showConverted =
+    convertedBalance != null &&
+    displayCurrency &&
+    displayCurrency !== currency &&
+    !(currency === 'USDT' && displayCurrency === 'USD');
+
   const content = (
     <>
-      <View className="flex-row items-center mb-2">
+      <View className="flex-row items-center mb-2 justify-between">
         <View
           className="w-9 h-9 rounded-full items-center justify-center"
           style={{ backgroundColor: color + '22' }}
         >
           <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={18} color={color} />
         </View>
+        {fxGroup === 'crypto' ? (
+          <Text className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Crypto</Text>
+        ) : fxGroup === 'bank' ? (
+          <Text className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">Bank FX</Text>
+        ) : null}
       </View>
       <Text className={`${theme.subtitle} text-xs`}>{name}</Text>
       <Text className={`${theme.title} ${typography.subheading} mt-0.5`}>
-        {formatCurrency(balance)} {currency}
+        {formatCurrency(balance, currency)}
       </Text>
+      {showConverted ? (
+        <Text className={`${theme.subtitle} text-xs mt-0.5`}>
+          ≈ {formatCurrency(convertedBalance!, displayCurrency)}
+        </Text>
+      ) : null}
     </>
   );
 

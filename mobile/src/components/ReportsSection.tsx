@@ -3,10 +3,10 @@ import { View, Text, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Input, Button, Card } from './ui';
 import { CategoryChip } from './design';
+import { DatePickerField } from './DatePickerField';
 import { api } from '../services/api';
 import { useToast } from './Toast';
-import { theme } from '../theme';
-import { palette } from '../theme';
+import { theme, palette } from '../theme';
 
 export default function ReportsSection() {
   const { showToast } = useToast();
@@ -82,12 +82,36 @@ export default function ReportsSection() {
       <Card>
         <View className="flex-row gap-2 mb-4">
           {filters.map((f) => (
-            <CategoryChip key={f.key} label={f.label} selected={type === f.key} onPress={() => setType(f.key)} />
+            <CategoryChip
+              key={f.key}
+              label={f.label}
+              selected={type === f.key}
+              onPress={() => setType(f.key)}
+            />
           ))}
         </View>
-        <Input label="Category" value={category} onChangeText={setCategory} placeholder="Optional" />
-        <Input label="Start Date" value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" />
-        <Input label="End Date" value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" />
+        <Input
+          label="Category"
+          value={category}
+          onChangeText={setCategory}
+          placeholder="Optional"
+        />
+        <DatePickerField
+          label="Start Date"
+          value={startDate}
+          onChange={setStartDate}
+          placeholder="Any start date"
+          allowClear
+          maximumDate={endDate ? new Date(`${endDate}T12:00:00`) : undefined}
+        />
+        <DatePickerField
+          label="End Date"
+          value={endDate}
+          onChange={setEndDate}
+          placeholder="Any end date"
+          allowClear
+          minimumDate={startDate ? new Date(`${startDate}T12:00:00`) : undefined}
+        />
         <Button title="Search" onPress={handleSearch} loading={loading} />
         {resultCount !== null && (
           <View className={`mt-3 ${theme.cardMuted} rounded-xl p-3 flex-row items-center`}>
@@ -96,7 +120,12 @@ export default function ReportsSection() {
           </View>
         )}
         <View className="mt-4">
-          <Button title="Export CSV" onPress={handleExport} loading={loading} variant="secondary" />
+          <Button
+            title="Export CSV"
+            onPress={handleExport}
+            loading={loading}
+            variant="secondary"
+          />
         </View>
       </Card>
     </View>

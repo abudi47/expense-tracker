@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { ToastProvider } from './src/components/Toast';
@@ -107,11 +108,13 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <ErrorBoundary>
-          <ThemeProvider>
-            <AppContent />
-          </ThemeProvider>
-        </ErrorBoundary>
+        <KeyboardProvider>
+          <ErrorBoundary>
+            <ThemeProvider>
+              <AppContent />
+            </ThemeProvider>
+          </ErrorBoundary>
+        </KeyboardProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

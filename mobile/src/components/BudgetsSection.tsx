@@ -1,18 +1,25 @@
 import { useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  Pressable,
+} from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Input, Button, Card } from './ui';
-import { KeyboardFormScreen } from './KeyboardFormScreen';
 import { CategoryChip } from './design';
 import { api, Budget, Category } from '../services/api';
 import { formatCurrency } from '../utils/format';
 import { useToast } from './Toast';
-import { theme } from '../theme';
-import { palette } from '../theme';
+import { theme, palette } from '../theme';
+import { useThemeColors } from '../theme/useThemeColors';
 
 export default function BudgetsSection() {
   const { showToast } = useToast();
+  const colors = useThemeColors();
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -115,29 +122,65 @@ export default function BudgetsSection() {
         })
       )}
 
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/50">
-          <View className={`${theme.modal} rounded-t-3xl max-h-[90%]`}>
-            <KeyboardFormScreen contentContainerClassName="px-5 py-6">
-              <Text className={`${theme.title} text-xl font-bold mb-4`}>
-                {editingId ? 'Edit Budget' : 'New Budget'}
-              </Text>
-              {error ? (
-                <Text className="text-red-500 text-sm mb-3">{error}</Text>
-              ) : null}
-              <Text className={`${theme.label} text-sm mb-2 font-medium`}>Category</Text>
-              <View className="flex-row flex-wrap gap-2 mb-4">
-                {(editingId ? categories.filter((c) => c.name === selectedCategory) : categories.filter((c) => !usedCategories.includes(c.name))).map((cat) => (
-                  <CategoryChip key={cat._id} label={cat.name} selected={selectedCategory === cat.name} onPress={() => setSelectedCategory(cat.name)} />
-                ))}
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View className="flex-1">
+          <Pressable
+            className="flex-1 bg-black/50 justify-end"
+            onPress={() => setModalVisible(false)}
+          >
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              className="rounded-t-3xl max-h-[85%]"
+              style={{ backgroundColor: colors.modal }}
+            >
+              <View className="items-center pt-3 pb-1">
+                <View className="w-10 h-1 rounded-full bg-slate-300 dark:bg-navy-600" />
               </View>
-              <Input label="Monthly Limit" value={monthlyLimit} onChangeText={setMonthlyLimit} keyboardType="decimal-pad" />
-              <Button title="Save" onPress={handleSave} loading={loading} />
-              <View className="mt-2 mb-4">
-                <Button title="Cancel" onPress={() => setModalVisible(false)} variant="secondary" />
-              </View>
-            </KeyboardFormScreen>
-          </View>
+              <KeyboardAwareScrollView
+                keyboardShouldPersistTaps="handled"
+                bottomOffset={24}
+                contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32, paddingTop: 8 }}
+              >
+                <Text className={`${theme.title} text-xl font-bold mb-4`}>
+                  {editingId ? 'Edit Budget' : 'New Budget'}
+                </Text>
+                {error ? <Text className="text-red-500 text-sm mb-3">{error}</Text> : null}
+                <Text className={`${theme.label} text-sm mb-2 font-medium`}>Category</Text>
+                <View className="flex-row flex-wrap gap-2 mb-4">
+                  {(editingId
+                    ? categories.filter((c) => c.name === selectedCategory)
+                    : categories.filter((c) => !usedCategories.includes(c.name))
+                  ).map((cat) => (
+                    <CategoryChip
+                      key={cat._id}
+                      label={cat.name}
+                      selected={selectedCategory === cat.name}
+                      onPress={() => setSelectedCategory(cat.name)}
+                    />
+                  ))}
+                </View>
+                <Input
+                  label="Monthly Limit"
+                  value={monthlyLimit}
+                  onChangeText={setMonthlyLimit}
+                  keyboardType="decimal-pad"
+                />
+                <Button title="Save" onPress={handleSave} loading={loading} />
+                <View className="mt-2">
+                  <Button
+                    title="Cancel"
+                    onPress={() => setModalVisible(false)}
+                    variant="secondary"
+                  />
+                </View>
+              </KeyboardAwareScrollView>
+            </Pressable>
+          </Pressable>
         </View>
       </Modal>
     </View>
