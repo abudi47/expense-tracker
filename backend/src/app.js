@@ -36,6 +36,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/scheduled-items', require('./routes/scheduledItems'));
 app.use('/api/ingest', require('./routes/ingest'));
 app.use('/api/detected', require('./routes/detected'));
+app.use('/api/cron', require('./routes/cron'));
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

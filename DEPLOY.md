@@ -40,6 +40,8 @@ In [Vercel Dashboard](https://vercel.com/dashboard) → your project → **Setti
 | `MONGODB_URI` | Your Atlas connection string |
 | `JWT_SECRET` | Long random string (not the dev one) |
 | `JWT_EXPIRES_IN` | `7d` |
+| `CRON_SECRET` | Long random string; Vercel Cron sends it as `Authorization: Bearer …` to `/api/cron/gmail-sync` every 30m |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` | Optional — Gmail Binance/Grey ingest |
 
 Then redeploy:
 
@@ -99,6 +101,8 @@ eas build --platform android --profile preview
 ```
 
 When done, download the **APK** from the link EAS provides and install on your phone.
+
+**Bank SMS ingest** (CBE / telebirr / BOA) requires this EAS APK — Expo Go cannot use `READ_SMS`. After install: Settings → Bank SMS → grant permission → matching SMS appear in Detected. See [`mobile/SMS_DISCLOSURE.md`](mobile/SMS_DISCLOSURE.md).
 
 ### Build for Google Play Store
 

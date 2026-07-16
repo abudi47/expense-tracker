@@ -85,6 +85,13 @@ router.put('/preferences', async (req, res) => {
       if (typeof ingest.androidNotifications === 'boolean') {
         user.ingest.androidNotifications = ingest.androidNotifications;
       }
+      if (typeof ingest.androidSms === 'boolean') {
+        user.ingest.androidSms = ingest.androidSms;
+        // Keep legacy flag in sync so older clients/paths still work
+        if (ingest.androidSms) {
+          user.ingest.androidNotifications = true;
+        }
+      }
       if (Array.isArray(ingest.senderAllowlist)) {
         user.ingest.senderAllowlist = ingest.senderAllowlist.map((s) => String(s).toLowerCase());
       }

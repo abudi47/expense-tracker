@@ -37,6 +37,8 @@ const userSchema = new mongoose.Schema(
       gmailBinance: { type: Boolean, default: false },
       gmailGrey: { type: Boolean, default: false },
       androidNotifications: { type: Boolean, default: false },
+      /** Opt-in Android SMS inbox reading for CBE / telebirr / BOA */
+      androidSms: { type: Boolean, default: false },
       gmailTokens: {
         accessToken: { type: String },
         refreshToken: { type: String },
@@ -47,6 +49,8 @@ const userSchema = new mongoose.Schema(
         type: [String],
         default: ['binance.com', 'grey.co', 'greymarket.com'],
       },
+      /** Last successful Gmail sync (manual, app, or cron) */
+      lastGmailSyncAt: { type: Date },
     },
     pushTokens: { type: [String], default: [] },
     pushAlertsEnabled: { type: Boolean, default: false },
@@ -71,11 +75,14 @@ userSchema.methods.getFxSettings = function () {
 };
 
 userSchema.methods.getIngestSettings = function () {
+  const androidSms =
+    !!this.ingest?.androidSms || !!this.ingest?.androidNotifications;
   return {
     gmailConnected: !!this.ingest?.gmailConnected && !!this.ingest?.gmailTokens?.refreshToken,
     gmailBinance: !!this.ingest?.gmailBinance,
     gmailGrey: !!this.ingest?.gmailGrey,
     androidNotifications: !!this.ingest?.androidNotifications,
+    androidSms,
     gmailEmail: this.ingest?.gmailTokens?.email || null,
     senderAllowlist: this.ingest?.senderAllowlist || [],
   };
