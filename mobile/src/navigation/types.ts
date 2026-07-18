@@ -23,5 +23,5 @@ export type RootStackParamList = {
   ScheduledItems: undefined;
   AddScheduledItem: { item?: ScheduledItem } | undefined;
   DetectedInbox: undefined;
-  NotificationAccess: undefined;
+  SmsAccess: undefined;
 };

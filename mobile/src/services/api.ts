@@ -174,6 +174,7 @@ export interface UserPreferences {
     gmailBinance: boolean;
     gmailGrey: boolean;
     androidNotifications: boolean;
+    androidSms: boolean;
     gmailEmail?: string | null;
     senderAllowlist?: string[];
   };

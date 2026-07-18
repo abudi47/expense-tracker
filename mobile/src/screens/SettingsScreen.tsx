@@ -13,10 +13,11 @@ import { palette, theme, ThemeMode, fonts } from '../theme';
 import { useThemeColors } from '../theme/useThemeColors';
 import { haptics } from '../utils/haptics';
 import { RootStackParamList } from '../navigation/types';
-import { startAndroidNotificationBridge } from '../services/androidNotificationListener';
+import { startAndroidSmsBridge } from '../services/androidSmsReader';
 import { enablePushAlerts, disablePushAlerts, notifyLocalDetected, PushSetupError } from '../services/pushNotifications';
 import { formatSyncToast, saveLastSyncStats } from '../utils/lastSyncStats';
 import { emitDataRefresh } from '../utils/dataRefresh';
+import { markGmailSyncedNow } from '../services/gmailAutoSync';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -48,8 +49,11 @@ export default function SettingsScreen() {
       setBankRate(String(fxData.bankUsdToEtb));
       setPrefs(prefData);
       setDetectedCount(countData.needsReviewCount);
-      if (prefData.ingest.androidNotifications && Platform.OS === 'android') {
-        startAndroidNotificationBridge();
+      if (
+        (prefData.ingest.androidSms || prefData.ingest.androidNotifications) &&
+        Platform.OS === 'android'
+      ) {
+        startAndroidSmsBridge();
       }
     } catch {
       // ignore
@@ -167,6 +171,7 @@ export default function SettingsScreen() {
     setSyncing(true);
     try {
       const result = await api.post<GmailSyncResult>('/ingest/gmail/sync', {});
+      markGmailSyncedNow();
       const breakdown = {
         scanned: result.scanned || 0,
         queued: result.queued || 0,
@@ -380,20 +385,26 @@ export default function SettingsScreen() {
           {prefs?.ingest.gmailConnected ? (
             <View className="mt-2">
               <Button title="Sync Gmail now" onPress={syncGmail} loading={syncing} variant="secondary" />
+              <Text
+                className={`${theme.subtitle} mt-2`}
+                style={{ fontFamily: fonts.regular, fontSize: 12 }}
+              >
+                Also syncs automatically when you open the app and about every 30 minutes on the server.
+              </Text>
             </View>
           ) : null}
           {Platform.OS === 'android' ? (
             <>
               <View className={`h-px my-2 ${theme.divider}`} />
               <SettingRow
-                icon={<Ionicons name="notifications-outline" size={22} color={palette.primary} />}
-                title="Bank notifications"
+                icon={<Ionicons name="chatbubble-ellipses-outline" size={22} color={palette.primary} />}
+                title="Bank SMS"
                 subtitle={
-                  prefs?.ingest.androidNotifications
-                    ? 'Enabled — review disclosure to change'
+                  prefs?.ingest.androidSms || prefs?.ingest.androidNotifications
+                    ? 'Enabled — matching SMS go to Detected'
                     : 'CBE, BOA, telebirr (Android)'
                 }
-                onPress={() => navigation.navigate('NotificationAccess')}
+                onPress={() => navigation.navigate('SmsAccess')}
                 right={<Ionicons name="chevron-forward" size={20} color={colors.icon} />}
               />
             </>

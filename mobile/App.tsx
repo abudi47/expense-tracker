@@ -1,5 +1,6 @@
 import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -13,7 +14,7 @@ import {
 } from '@expo-google-fonts/poppins';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
-import { ToastProvider } from './src/components/Toast';
+import { ToastProvider, useToast } from './src/components/Toast';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import AuthNavigator from './src/navigation/AuthNavigator';
 import MainNavigator from './src/navigation/MainNavigator';
@@ -25,10 +26,14 @@ import ScheduledItemsScreen, {
   AddScheduledItemScreen,
 } from './src/screens/ScheduledItemsScreen';
 import DetectedInboxScreen from './src/screens/DetectedInboxScreen';
-import NotificationAccessScreen from './src/screens/NotificationAccessScreen';
+import SmsAccessScreen from './src/screens/SmsAccessScreen';
 import { RootStackParamList } from './src/navigation/types';
 import { theme, palette, fonts } from './src/theme';
 import { useThemeColors } from './src/theme/useThemeColors';
+import {
+  setGmailAutoSyncCallbacks,
+  startGmailAutoSync,
+} from './src/services/gmailAutoSync';
 import './global.css';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -38,6 +43,17 @@ const navFont = { fontFamily: fonts.semibold, fontSize: 17 };
 function RootNavigator() {
   const { token, loading } = useAuth();
   const colors = useThemeColors();
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    if (!token) return;
+    setGmailAutoSyncCallbacks({
+      onQueued: (count, message) => {
+        showToast(message || `${count} new from Gmail`, 'success');
+      },
+    });
+    return startGmailAutoSync();
+  }, [token, showToast]);
 
   if (loading) {
     return (
@@ -136,13 +152,13 @@ function RootNavigator() {
             }}
           />
           <Stack.Screen
-            name="NotificationAccess"
-            component={NotificationAccessScreen}
+            name="SmsAccess"
+            component={SmsAccessScreen}
             options={{
               headerShown: true,
               headerStyle: { backgroundColor: colors.surface },
               headerTintColor: colors.text,
-              title: 'Notification access',
+              title: 'Bank SMS',
             }}
           />
         </>
