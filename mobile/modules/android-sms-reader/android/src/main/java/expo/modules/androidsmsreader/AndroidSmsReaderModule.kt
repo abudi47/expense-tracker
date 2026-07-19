@@ -45,6 +45,8 @@ class AndroidSmsReaderModule : Module() {
       }
 
       val max = limit.coerceIn(1, 200)
+      // Scan deeper into inbox so bank SMS aren't missed behind chat noise
+      val scanCap = (max * 40).coerceAtMost(2000)
       val results = mutableListOf<Map<String, Any?>>()
       val uri: Uri = Telephony.Sms.Inbox.CONTENT_URI
       val projection = arrayOf(
@@ -66,7 +68,7 @@ class AndroidSmsReaderModule : Module() {
         val bodyIdx = cursor.getColumnIndex(Telephony.Sms.BODY)
         val dateIdx = cursor.getColumnIndex(Telephony.Sms.DATE)
         var scanned = 0
-        while (cursor.moveToNext() && results.size < max && scanned < max * 8) {
+        while (cursor.moveToNext() && results.size < max && scanned < scanCap) {
           scanned += 1
           val address = if (addrIdx >= 0) cursor.getString(addrIdx) else null
           val body = if (bodyIdx >= 0) cursor.getString(bodyIdx) else null

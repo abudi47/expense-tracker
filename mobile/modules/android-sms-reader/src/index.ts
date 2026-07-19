@@ -46,15 +46,13 @@ export function hasPermission(): boolean {
   }
 }
 
-export async function scanRecent(limit = 40): Promise<SmsPayload[]> {
+export async function scanRecent(limit = 80): Promise<SmsPayload[]> {
   const Native = getNative();
-  if (!Native?.scanRecent) return [];
-  try {
-    const rows = await Native.scanRecent(limit);
-    return Array.isArray(rows) ? rows : [];
-  } catch {
-    return [];
+  if (!Native?.scanRecent) {
+    throw new Error('Native SMS module unavailable');
   }
+  const rows = await Native.scanRecent(limit);
+  return Array.isArray(rows) ? rows : [];
 }
 
 export function addSmsListener(listener: (event: SmsPayload) => void): { remove: () => void } {

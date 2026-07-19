@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View, Text, ScrollView, Platform, Linking } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Button, Card } from '../components/ui';
@@ -33,10 +34,29 @@ export const SMS_DISCLOSURE = {
     'READ_SMS is a restricted permission on Google Play. This build is intended for sideload / internal EAS distribution. Do not submit to Play without a separate compliance review.',
 };
 
+function formatScanResult(result: {
+  created: number;
+  matched: number;
+  skipped: number;
+  scanned?: number;
+  error?: string;
+}) {
+  if (result.error) return result.error;
+  if (result.created > 0) return `Queued ${result.created} SMS for review`;
+  if ((result.scanned || 0) > 0 && result.matched === 0) {
+    return `Found ${result.scanned} bank-like SMS but none parsed — check backend is deployed.`;
+  }
+  if ((result.matched || 0) > 0 && result.created === 0) {
+    return `Matched ${result.matched} already in Detected (no new items).`;
+  }
+  return 'Bank SMS enabled — new matching messages will appear in Detected';
+}
+
 export default function SmsAccessScreen() {
   const navigation = useNavigation();
   const { showToast } = useToast();
   const nativeReady = isNativeSmsReaderAvailable();
+  const [busy, setBusy] = useState(false);
 
   const enable = async () => {
     haptics.medium();
@@ -45,6 +65,7 @@ export default function SmsAccessScreen() {
       return;
     }
 
+    setBusy(true);
     try {
       await api.put('/settings/preferences', {
         ingest: { androidSms: true },
@@ -68,15 +89,38 @@ export default function SmsAccessScreen() {
       }
 
       startAndroidSmsBridge();
-      const result = await scanAndIngestRecent(40).catch(() => null);
-      if (result && result.created > 0) {
-        showToast(`Queued ${result.created} SMS for review`, 'success');
-      } else {
-        showToast('Bank SMS enabled — new matching messages will appear in Detected', 'success');
-      }
-      navigation.goBack();
+      const result = await scanAndIngestRecent(80);
+      const msg = formatScanResult(result);
+      showToast(msg, result.error ? 'error' : result.created > 0 ? 'success' : 'info');
+      if (!result.error) navigation.goBack();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to enable', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const rescan = async () => {
+    haptics.light();
+    setBusy(true);
+    try {
+      if (!hasSmsPermission()) {
+        const granted = await requestSmsPermission();
+        if (!granted) {
+          showToast('SMS permission required', 'error');
+          return;
+        }
+      }
+      startAndroidSmsBridge();
+      const result = await scanAndIngestRecent(80);
+      showToast(
+        formatScanResult(result),
+        result.error ? 'error' : result.created > 0 ? 'success' : 'info'
+      );
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Scan failed', 'error');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -122,7 +166,25 @@ export default function SmsAccessScreen() {
       </Card>
 
       {Platform.OS === 'android' ? (
-        <Button title="I understand — enable Bank SMS" onPress={enable} />
+        <>
+          <Button
+            title="I understand — enable Bank SMS"
+            onPress={enable}
+            loading={busy}
+            disabled={busy}
+          />
+          {nativeReady ? (
+            <View className="mt-3">
+              <Button
+                title="Scan inbox now"
+                onPress={rescan}
+                variant="secondary"
+                loading={busy}
+                disabled={busy}
+              />
+            </View>
+          ) : null}
+        </>
       ) : (
         <Text className={theme.subtitle} style={{ fontFamily: fonts.medium, textAlign: 'center' }}>
           This feature is only available on Android.

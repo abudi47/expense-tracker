@@ -34,6 +34,7 @@ import {
   setGmailAutoSyncCallbacks,
   startGmailAutoSync,
 } from './src/services/gmailAutoSync';
+import { startSmsBridgeIfEnabled } from './src/services/androidSmsReader';
 import './global.css';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -52,7 +53,15 @@ function RootNavigator() {
         showToast(message || `${count} new from Gmail`, 'success');
       },
     });
-    return startGmailAutoSync();
+    const stopGmail = startGmailAutoSync();
+    let stopSms: (() => void) | undefined;
+    startSmsBridgeIfEnabled().then((stop) => {
+      stopSms = stop;
+    });
+    return () => {
+      stopGmail?.();
+      stopSms?.();
+    };
   }, [token, showToast]);
 
   if (loading) {

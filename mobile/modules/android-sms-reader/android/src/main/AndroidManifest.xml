@@ -4,7 +4,7 @@
 
   <application>
     <receiver
-      android:name=".SmsReceivedReceiver"
+      android:name="expo.modules.androidsmsreader.SmsReceivedReceiver"
       android:exported="true"
       android:permission="android.permission.BROADCAST_SMS">
       <intent-filter android:priority="999">

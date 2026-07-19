@@ -12,14 +12,14 @@ function parseNotification(title = '', body = '') {
   const text = `${title}\n${body}`;
   const lower = text.toLowerCase();
 
-  // Prefer source hinted by title/package keywords
-  if (/telebirr|e-money/.test(lower)) {
+  // Prefer source hinted by title/package/sender keywords
+  if (/telebirr|e-money|ethio\s*telecom|ethiotelecom/.test(lower)) {
     return parseTelebirrSms(text) || parseCbeSms(text) || parseBoaSms(text) || null;
   }
-  if (/abyssinia|boa/.test(lower)) {
+  if (/abyssinia|boa|bankofabyssinia/.test(lower)) {
     return parseBoaSms(text) || parseCbeSms(text) || parseTelebirrSms(text) || null;
   }
-  if (/cbe|commercial bank|mbreciept/.test(lower)) {
+  if (/cbe|commercial bank|mbreciept|mreciept|thanks for banking/.test(lower)) {
     return parseCbeSms(text) || parseBoaSms(text) || parseTelebirrSms(text) || null;
   }
 

@@ -15,13 +15,26 @@ type NativeApi = {
   addSmsListener: (listener: (n: SmsPayload) => void) => { remove: () => void };
 };
 
+export type ScanIngestResult = {
+  matched: number;
+  created: number;
+  skipped: number;
+  scanned?: number;
+  error?: string;
+};
+
 let started = false;
 let lastScanAt = 0;
+let stopBridge: (() => void) | null = null;
 
 function loadNative(): NativeApi | null {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('android-sms-reader') as NativeApi;
+    const mod = require('android-sms-reader') as NativeApi & { default?: NativeApi };
+    const api = (mod?.default ?? mod) as NativeApi;
+    if (typeof api?.isSupported === 'function') return api;
+    if (typeof (mod as NativeApi)?.isSupported === 'function') return mod as NativeApi;
+    return null;
   } catch {
     return null;
   }
@@ -67,22 +80,69 @@ export async function submitSms(payload: SmsPayload) {
 
 export async function submitSmsBatch(messages: SmsPayload[]) {
   if (Platform.OS !== 'android' || !messages.length) {
-    return { matched: 0, created: 0, skipped: 0 };
+    return { matched: 0, created: 0, skipped: 0, scanned: 0 } satisfies ScanIngestResult;
   }
-  return api.post<{ matched: number; created: number; skipped: number; items?: unknown[] }>(
-    '/ingest/sms/batch',
-    { messages }
-  );
+  return api.post<ScanIngestResult>('/ingest/sms/batch', { messages });
 }
 
 /** Scan recent bank-like SMS and post matches to the backend. */
-export async function scanAndIngestRecent(limit = 40) {
+export async function scanAndIngestRecent(limit = 80): Promise<ScanIngestResult> {
   const native = loadNative();
-  if (!native?.scanRecent) return { matched: 0, created: 0, skipped: 0 };
-  const rows = await native.scanRecent(limit);
-  if (!rows.length) return { matched: 0, created: 0, skipped: 0 };
+  if (!native?.scanRecent) {
+    return {
+      matched: 0,
+      created: 0,
+      skipped: 0,
+      scanned: 0,
+      error: 'Native SMS module unavailable — install the EAS APK (not Expo Go).',
+    };
+  }
+  if (!hasSmsPermission()) {
+    return {
+      matched: 0,
+      created: 0,
+      skipped: 0,
+      scanned: 0,
+      error: 'SMS permission not granted.',
+    };
+  }
+
+  let rows: SmsPayload[] = [];
+  try {
+    rows = await native.scanRecent(limit);
+  } catch (err) {
+    return {
+      matched: 0,
+      created: 0,
+      skipped: 0,
+      scanned: 0,
+      error: err instanceof Error ? err.message : 'Failed to read SMS inbox',
+    };
+  }
+
+  if (!rows.length) {
+    return {
+      matched: 0,
+      created: 0,
+      skipped: 0,
+      scanned: 0,
+      error: 'No bank-like SMS found in recent inbox.',
+    };
+  }
+
   lastScanAt = Date.now();
-  return submitSmsBatch(rows);
+  try {
+    const result = await submitSmsBatch(rows);
+    return { ...result, scanned: rows.length };
+  } catch (err) {
+    return {
+      matched: 0,
+      created: 0,
+      skipped: 0,
+      scanned: rows.length,
+      error: err instanceof Error ? err.message : 'Failed to upload SMS',
+    };
+  }
 }
 
 /**
@@ -90,7 +150,9 @@ export async function scanAndIngestRecent(limit = 40) {
  * without the native module (requires EAS rebuild).
  */
 export function startAndroidSmsBridge() {
-  if (Platform.OS !== 'android' || started) return () => {};
+  if (Platform.OS !== 'android' || started) {
+    return stopBridge || (() => {});
+  }
   started = true;
 
   const native = loadNative();
@@ -109,21 +171,38 @@ export function startAndroidSmsBridge() {
   const onAppState = (state: AppStateStatus) => {
     if (state !== 'active') return;
     if (!hasSmsPermission()) return;
-    // Throttle rescans to once per 30s
     if (Date.now() - lastScanAt < 30_000) return;
-    scanAndIngestRecent(25).catch(() => {});
+    scanAndIngestRecent(50).catch(() => {});
   };
 
   const appSub = AppState.addEventListener('change', onAppState);
 
-  // Initial light scan when bridge starts
   if (hasSmsPermission()) {
-    scanAndIngestRecent(40).catch(() => {});
+    scanAndIngestRecent(80).catch(() => {});
   }
 
-  return () => {
+  stopBridge = () => {
     sub?.remove();
     appSub.remove();
     started = false;
+    stopBridge = null;
   };
+
+  return stopBridge;
+}
+
+/** Fetch prefs-aware start: call after login when androidSms is enabled. */
+export async function startSmsBridgeIfEnabled() {
+  if (Platform.OS !== 'android') return () => {};
+  try {
+    const prefs = await api.get<{ ingest?: { androidSms?: boolean; androidNotifications?: boolean } }>(
+      '/settings/preferences'
+    );
+    if (prefs?.ingest?.androidSms || prefs?.ingest?.androidNotifications) {
+      return startAndroidSmsBridge();
+    }
+  } catch {
+    // offline / not logged in
+  }
+  return () => {};
 }
