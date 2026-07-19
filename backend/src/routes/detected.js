@@ -83,7 +83,10 @@ router.patch('/:id', async (req, res) => {
     if (direction && ['incoming', 'outgoing'].includes(direction)) updates.direction = direction;
     if (date) updates.date = new Date(date);
     if (suggestedAccountId) updates.suggestedAccountId = suggestedAccountId;
-    if (note != null) updates.rawSnippet = String(note).slice(0, 500);
+    if (note != null) {
+      const { redactSensitive } = require('../parsers/shared');
+      updates.rawSnippet = redactSensitive(String(note));
+    }
 
     const item = await DetectedItem.findOneAndUpdate(
       { _id: req.params.id, userId: req.user._id, status: { $in: ['needs_review', 'duplicate'] } },

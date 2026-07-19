@@ -3,6 +3,7 @@ const DetectedItem = require('../models/DetectedItem');
 const Transaction = require('../models/Transaction');
 const { findDuplicateTransaction } = require('../utils/duplicates');
 const { computeAccountBalance } = require('../utils/accountBalance');
+const { redactSensitive } = require('../parsers/shared');
 
 function suggestAccount(accounts, hint = '', currency = 'ETB') {
   const h = String(hint).toLowerCase();
@@ -79,7 +80,7 @@ async function upsertDetectedFromParsed(userId, parsed) {
     fee: parsed.fee,
     vat: parsed.vat,
     reportedBalance: parsed.reportedBalance,
-    rawSnippet: parsed.rawSnippet || '',
+    rawSnippet: redactSensitive(parsed.rawSnippet || ''),
     status: dupTx ? 'duplicate' : 'needs_review',
   });
 

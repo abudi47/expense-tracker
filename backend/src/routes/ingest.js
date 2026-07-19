@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const { parseEmail, parseNotification } = require('../parsers');
+const { redactSensitive } = require('../parsers/shared');
 const { upsertDetectedFromParsed } = require('../utils/ingestHelpers');
 const { gmailGet, syncGmailForUser } = require('../utils/gmailSync');
 
@@ -12,8 +13,13 @@ function smsEnabled(user) {
 
 function smsExternalRef({ messageId, address, date, body }) {
   if (messageId) return `sms-${messageId}`;
-  const raw = `${address || ''}|${date || ''}|${String(body || '').slice(0, 200)}`;
+  // Hash only — never embed SMS body (amounts/accounts) in the stored ref
+  const raw = `${address || ''}|${date || ''}|${String(body || '')}`;
   return `sms-${crypto.createHash('sha256').update(raw).digest('hex').slice(0, 32)}`;
+}
+
+function safeSnippet(prefix, snippetOrText) {
+  return redactSensitive(`${prefix || ''} ${snippetOrText || ''}`.trim());
 }
 
 const router = express.Router();
@@ -184,7 +190,7 @@ router.post('/notification', async (req, res) => {
 
     const { item, outcome } = await upsertDetectedFromParsed(req.user._id, {
       ...parsed,
-      rawSnippet: `${packageName || ''} ${parsed.rawSnippet || ''}`.trim().slice(0, 500),
+      rawSnippet: safeSnippet(packageName, parsed.rawSnippet),
     });
 
     if (outcome === 'created' && item) {
@@ -233,7 +239,7 @@ router.post('/sms', async (req, res) => {
       ...parsed,
       date: Number.isNaN(smsDate.getTime()) ? parsed.date || new Date() : smsDate,
       rawReference: externalRef,
-      rawSnippet: `${address || 'SMS'} ${parsed.rawSnippet || text}`.trim().slice(0, 500),
+      rawSnippet: safeSnippet(address || 'SMS', parsed.rawSnippet || text),
     });
 
     if (outcome === 'created' && item) {
@@ -294,7 +300,7 @@ router.post('/sms/batch', async (req, res) => {
         ...parsed,
         date: Number.isNaN(smsDate.getTime()) ? parsed.date || new Date() : smsDate,
         rawReference: externalRef,
-        rawSnippet: `${msg.address || 'SMS'} ${parsed.rawSnippet || text}`.trim().slice(0, 500),
+        rawSnippet: safeSnippet(msg.address || 'SMS', parsed.rawSnippet || text),
       });
       if (outcome === 'created' && item) {
         created += 1;

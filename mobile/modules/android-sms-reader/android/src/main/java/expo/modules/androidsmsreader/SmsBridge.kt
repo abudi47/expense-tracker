@@ -6,12 +6,14 @@ object SmsBridge {
   /** Address keywords / body keywords for Ethiopian bank SMS */
   val addressHints = listOf(
     "cbe", "commercial", "abyssinia", "boa", "telebirr", "ethiotelecom",
-    "8072", "8894", "8907", "8520", "9401", "922"
+    // Common Ethiopian short codes
+    "127", "8072", "8894", "8907", "8520", "9401", "922", "989"
   )
 
   val bodyHints = listOf(
-    "credited", "debited", "transferred", "received", "etb", "balance",
-    "telebirr", "cbe", "abyssinia", "mb-receipt", "mbreciept", "txn"
+    "credited", "debited", "debit", "credit", "transferred", "received", "etb", "balance",
+    "telebirr", "cbe", "abyssinia", "mb-receipt", "mbreciept", "mreciept", "txn",
+    "purchase made", "transaction number", "ethiotelecom"
   )
 
   fun looksLikeBankSms(address: String?, body: String?): Boolean {

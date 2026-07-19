@@ -26,26 +26,59 @@ function parseAmount(raw) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+/**
+ * Redact amounts, balances, accounts, phones, and names from text kept in
+ * snippets/logs/API samples so money and identity are not stored in clear text.
+ */
+function redactSensitive(text = '') {
+  return String(text)
+    .replace(/https?:\/\/\S+/gi, '[link]')
+    .replace(/\bETB\s*[\d,]+(?:\.\d+)?/gi, 'ETB[…]')
+    .replace(/\$\s*[\d,]+(?:\.\d+)?/gi, '$[…]')
+    .replace(/\b(?:USD|USDT|USDC)\s*[\d,]+(?:\.\d+)?/gi, '[…]')
+    .replace(/\b[\d,]+(?:\.\d+)?\s*(?:ETB|USD|USDT|USDC)\b/gi, '[…]')
+    // Bare fee/VAT/DR figures: "of 0.50", "of 0.0"
+    .replace(
+      /\b(?:VAT|Disaster Recovery|service charge|fee)([^.]{0,40}?)\bof\s+(?:ETB\s*)?[\d,]+(?:\.\d+)?/gi,
+      (m) => m.replace(/\bof\s+(?:ETB\s*)?[\d,]+(?:\.\d+)?/i, 'of […]')
+    )
+    .replace(/\b\d[*xX]{2,}\d+\b/g, '[account]')
+    .replace(/\b(?:account)\s+[*\dXx]{4,}/gi, 'account [account]')
+    .replace(/\b251\d{8,9}\b/g, '[phone]')
+    .replace(/\(\s*251[\d*]{4,}\s*\)/g, '([phone])')
+    .replace(/\bDear\s+[A-Za-z][A-Za-z\s.'-]{1,60}(?=\s+(?:You|A|your)\b|,)/gi, 'Dear [name]')
+    .replace(/\(([A-Za-z][A-Za-z\s.'-]{2,50})\)/g, '([name])')
+    .replace(/\bby\s+[A-Za-z][A-Za-z\s.'-]{2,50}(?=\.|$)/gi, 'by [name]')
+    .replace(/\b(?:FT|DG)[A-Z0-9]{6,}\b/gi, '[ref]')
+    .replace(/\btransaction number(?:\s+is)?\s+[A-Za-z0-9-]+/gi, 'transaction number [ref]')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 500);
+}
+
 /** Common bank/wallet reference patterns */
 function extractReference(text = '') {
   const raw = String(text);
   const match =
-    raw.match(/mbreciept\.cbe\.com\.et\/([A-Za-z0-9._-]+)/i) ||
+    raw.match(/m+b?reciept\.cbe\.com\.et\/(?:v2-)?([A-Za-z0-9._-]+)/i) ||
+    raw.match(/mreciept\.cbe\.com\.et\/(?:v2-)?([A-Za-z0-9._-]+)/i) ||
+    raw.match(/transactioninfo\.ethiotelecom\.et\/receipt\/([A-Za-z0-9_-]+)/i) ||
     raw.match(/[?&]trx=([A-Za-z0-9_-]+)/i) ||
     raw.match(/transaction\s+number\s+is\s+([A-Za-z0-9-]+)/i) ||
+    raw.match(/by\s+transaction\s+number\s+([A-Za-z0-9-]+)/i) ||
     raw.match(
       /(?:Transaction\s*(?:ID|No\.?|Number)|Txn\s*ID|Ref(?:erence)?|ID)[:\s#]*([A-Za-z0-9_-]{6,})/i
     ) ||
-    raw.match(/\b(FT[A-Z0-9]{8,})\b/i);
+    raw.match(/\b(FT[A-Z0-9]{8,})\b/i) ||
+    raw.match(/\b(DG[A-Z0-9]{8,})\b/i);
   return match?.[1] || null;
 }
 
 /** Stable fallback when message has no explicit ref (avoid Date.now uniqueness) */
 function stableFallbackRef(source, direction, amount, currency, snippet = '') {
   const day = new Date().toISOString().slice(0, 10);
-  const snip = String(snippet)
+  const snip = redactSensitive(snippet)
     .toLowerCase()
-    .replace(/balance[^\d]*[\d,.]+/gi, '')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 48);
@@ -74,13 +107,14 @@ function normalizeResult(partial) {
     fee: partial.fee ?? undefined,
     vat: partial.vat ?? undefined,
     reportedBalance: partial.reportedBalance ?? undefined,
-    rawSnippet: (partial.rawSnippet || '').slice(0, 500),
+    rawSnippet: redactSensitive(partial.rawSnippet || ''),
   };
 }
 
 module.exports = {
   stripNoise,
   parseAmount,
+  redactSensitive,
   extractReference,
   stableFallbackRef,
   isNonTransactionMail,

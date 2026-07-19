@@ -66,7 +66,8 @@ function headerValue(headers, name) {
 }
 
 function stripForSample(body = '') {
-  return String(body).replace(/\s+/g, ' ').trim().slice(0, 140);
+  const { redactSensitive } = require('../parsers/shared');
+  return redactSensitive(body).slice(0, 140);
 }
 
 function syncError(code, message) {
