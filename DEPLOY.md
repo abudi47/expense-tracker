@@ -40,7 +40,7 @@ In [Vercel Dashboard](https://vercel.com/dashboard) → your project → **Setti
 | `MONGODB_URI` | Your Atlas connection string |
 | `JWT_SECRET` | Long random string (not the dev one) |
 | `JWT_EXPIRES_IN` | `7d` |
-| `CRON_SECRET` | Long random string; Vercel Cron sends it as `Authorization: Bearer …` to `/api/cron/gmail-sync` every 30m |
+| `CRON_SECRET` | Long random string; Vercel Cron sends it as `Authorization: Bearer …` to `/api/cron/gmail-sync` (Hobby: once daily) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` | Optional — Gmail Binance/Grey ingest |
 
 Then redeploy:
